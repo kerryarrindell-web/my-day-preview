@@ -185,8 +185,41 @@ body.noglass #modal{background:var(--bg)}
 .myday-list-icon{font-size:1.5em}.myday-list-open{font-size:.8em;font-weight:700;color:var(--list-accent)}
 @media(max-width:330px){.myday-list-grid{grid-template-columns:1fr}}
 </style>
+
+<style id="myday-opening-style">
+#myday-opening{position:fixed;inset:0;z-index:99999;background:linear-gradient(145deg,#ffe7ee,#fff9f4 55%,#d8f0e0);display:grid;place-items:center;overflow:hidden;transition:opacity .35s ease,visibility .35s ease}
+#myday-opening[hidden]{display:none}
+#myday-opening.is-leaving{opacity:0;visibility:hidden;pointer-events:none}
+#myday-opening video{height:100%;width:100%;object-fit:cover;display:block}
+#myday-opening .opening-skip{position:absolute;right:16px;top:max(16px,env(safe-area-inset-top));z-index:1;border:1px solid #e6c8d8;background:#ffffffcc;color:#79516c;border-radius:99px;padding:9px 15px;font:600 13px system-ui;cursor:pointer}
+@media(prefers-reduced-motion:reduce){#myday-opening{transition:none}}
+</style>
 </head>
 <body data-size="m">
+<div id="myday-opening" aria-label="My Day opening animation">
+  <video id="myday-opening-video" autoplay muted playsinline preload="auto" aria-hidden="true"><source src="myday-opening.mp4" type="video/mp4"></video>
+  <button type="button" class="opening-skip" onclick="dismissMyDayOpening()">Skip</button>
+</div>
+<script>
+(function(){
+ var splash=document.getElementById('myday-opening');
+ var video=document.getElementById('myday-opening-video');
+ var closed=false,timer;
+ window.dismissMyDayOpening=function(){
+   if(closed)return;
+   closed=true;clearTimeout(timer);
+   try{video.pause()}catch(e){}
+   splash.classList.add('is-leaving');
+   window.setTimeout(function(){splash.hidden=true},380);
+ };
+ var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ if(reduce){splash.hidden=true;closed=true;try{video.pause()}catch(e){}return;}
+ video.addEventListener('ended',window.dismissMyDayOpening,{once:true});
+ video.addEventListener('error',window.dismissMyDayOpening,{once:true});
+ timer=window.setTimeout(window.dismissMyDayOpening,4600);
+ window.addEventListener('pagehide',function(){clearTimeout(timer)},{once:true});
+})();
+</script>
 <div id="banner" aria-live="assertive"></div>
 <header><div class="hd"><h1 id="hi">Hello <img class="logo" src="favicon.svg" alt=""></h1><p id="dt"></p></div><button class="gear" onclick="openSettings()" aria-label="Settings">⚙️</button></header>
 <main id="app"></main>
@@ -206,7 +239,7 @@ const pd=s=>{const a=s.split('-').map(Number);return new Date(a[0],a[1]-1,a[2])}
 const addDays=(s,n)=>{const d=pd(s);d.setDate(d.getDate()+n);return ymd(d)};
 const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
 
-const DEF=()=>({lists:[{id:'groc',name:'Groceries',emoji:'🛒',items:[]},{id:'baby',name:'Baby',emoji:'🍼',items:[]},{id:'todo',name:'To do',emoji:'✅',items:[]}],tasks:[],appts:[],notes:[],name:'',custom:[],settings:{size:'m',dark:false,notify:false,cal:'https://calendar.google.com/',babyUrl:'',moti:true,cheer:true},wins:{},notified:{},snooze:{},routines:[{id:'am',name:'Morning',emoji:'🌅',items:[{id:'am1',t:'Take vitamins'},{id:'am2',t:'Breakfast'},{id:'am3',t:'Check today’s list'}]},{id:'pm',name:'Bedtime',emoji:'🌙',items:[{id:'pm1',t:'Lock up'},{id:'pm2',t:'Charge phone'},{id:'pm3',t:'Look at tomorrow'}]}],rlog:{},meals:{}});
+const DEF=()=>({lists:[{id:'groc',name:'Groceries',emoji:'🛒',items:[]},{id:'baby',name:'Baby',emoji:'🍼',items:[]},{id:'todo',name:'To do',emoji:'✅',items:[]}],tasks:[],appts:[],notes:[],name:'',custom:[],settings:{size:'m',dark:false,notify:false,cal:'https://calendar.google.com/',babyUrl:'',moti:true,cheer:true},wins:{},notified:{},snooze:{},routines:[{id:'am',name:'Morning',emoji:'🌅',items:[{id:'am1',t:'Take vitamins'},{id:'am2',t:'Breakfast'},{id:'am3',t:'Check today’s list'}]},{id:'pm',name:'Bedtime',emoji:'🌙',items:[{id:'pm1',t:'Lock up'},{id:'pm2',t:'Charge phone'},{id:'pm3',t:'Look at tomorrow'}]}],rlog:{},meals:{},pills:[]});
 const KEY='myday-v1';
 let S=DEF(),mem=null;
 let animTab=false,lastAdd=null,motiOff=0,motiHelp=false,noteQ='',openRt=null,pendingImg='',editImg='',tab='today',curList='groc',showForm=false,showPast=false,showDone=false,openCat=null,confirmDel=false,noteColor='#fff3a8',lastSnap=null,alerts=[],installEvt=null,syncMsg='Saved on this phone';
@@ -218,7 +251,7 @@ function norm(o){const d=DEF();const n=Object.assign(d,o||{});n.settings=Object.
   const old=addDays(todayStr(),-45);
   n.tasks=n.tasks.filter(t=>!(t.done&&!t.rep&&t.date<old));
   n.wins=n.wins||{};for(const k in n.wins)if(k<old)delete n.wins[k];
-  n.rlog=n.rlog||{};n.meals=n.meals||{};n.routines=n.routines||DEF().routines;
+  n.rlog=n.rlog||{};n.meals=n.meals||{};n.pills=Array.isArray(n.pills)?n.pills:[];n.routines=n.routines||DEF().routines;
   for(const k in n.rlog)if(k<old)delete n.rlog[k];
   const oldM=addDays(todayStr(),-14);for(const k in n.meals)if(k<oldM)delete n.meals[k];
   n.tasks.forEach(t=>{if(t.doneOn)for(const k in t.doneOn)if(k<old)delete t.doneOn[k]});
@@ -536,7 +569,7 @@ function noteModal(id){const n=S.notes.find(x=>x.id===id);if(!n)return;editImg=n
   <input type="hidden" id="mnc" value="${n.color}">
   <div class="mbtns"><button class="btn">Save</button><button type="button" class="btn danger" onclick="delNote('${n.id}')">Delete</button><button type="button" class="btn alt" onclick="closeModal()">Cancel</button></div></form>`)}
 function pickNote(b){$('#mnc').value=b.dataset.c;document.querySelectorAll('#modal [data-c]').forEach(x=>x.style.border=x===b?'3px solid var(--ink)':'2px solid #fff')}
-function saveNote(e,id){e.preventDefault();const n=S.notes.find(x=>x.id===id);n.text=$('#mnt').value.trim();if(!n.text&&!editImg)return;n.color=$('#mnc').value;n.pin=$('#mnp').checked;n.img=editImg;save();closeModal();render()}
+function saveNote(e,id){e.preventDefault();const n=S.notes.find(x=>x.id===id);n.text=$('#mnt').value.trim();if(!n.text&&!editImg)return;n.done=false;n.color=$('#mnc').value;n.pin=$('#mnp').checked;n.img=editImg;save();closeModal();render()}
 function delNote(id){snap();S.notes=S.notes.filter(n=>n.id!==id);save();closeModal();render();toast('Deleted',true)}
 
 /* ---------- task edit ---------- */
@@ -599,6 +632,7 @@ function tick(){
     if(S.notified[key]||(S.snooze[key]&&now<S.snooze[key]))return;
     const p=t.time.split(':'),at=new Date();at.setHours(+p[0],+p[1],0,0);
     if(now>=at.getTime()&&now-at.getTime()<8*36e5)fire(key,'⏰ '+t.t,fmtTime(t.time)+' today',t.id,ds)});
+  (S.pills||[]).forEach(p=>{if(!p.time||p.doneOn===ds)return;const key='pill'+p.id+ds;if(S.notified[key]||(S.snooze[key]&&now<S.snooze[key]))return;const parts=p.time.split(':');const due=new Date();due.setHours(+parts[0],+parts[1],0,0);if(now>=due.getTime()&&now-due.getTime()<3600000)fire(key,'💊 Pill reminder',p.name+' · '+fmtTime(p.time),null,ds)});
   S.appts.forEach(a=>{const r=a.remind==null?60:a.remind;if(!a.time||r<0)return;const key='a'+a.id+a.date+'r'+r;
     if(S.notified[key]||(S.snooze[key]&&now<S.snooze[key]))return;
     const p=a.time.split(':'),st=pd(a.date);st.setHours(+p[0],+p[1],0,0);const at=st.getTime()-r*60000;
@@ -606,19 +640,36 @@ function tick(){
 
 /* ---------- views ---------- */
 function greeting(){const h=new Date().getHours();return (h<12?'Good morning':h<18?'Good afternoon':'Good evening')+(S.name?', '+esc(S.name):'')+' <img class="logo" src="favicon.svg" alt="">'}
+/* Blossom Glow pill reminders: private, user-entered schedules; no medication recommendations. */
+function pillCard(){const ds=todayStr(),entries=(S.pills||[]).slice().sort((a,b)=>a.time.localeCompare(b.time));return `<section class="card bg-pills"><div class="bg-pills-heading"><h2>💊 Pill reminders</h2><button class="btn alt" onclick="pillModal()">+ Add</button></div><p class="meta">Set a time for each reminder. Alerts work while My Day is open; background notifications are not guaranteed.</p>${entries.map(p=>`<div class="bg-pill-row"><button class="chk" onclick="pillToggle('${p.id}')" aria-label="Mark ${esc(p.name)} ${p.doneOn===ds?'not taken':'taken'}">${p.doneOn===ds?'✓':''}</button><div class="bg-pill-info"><strong>${esc(p.name)}</strong><span>${fmtTime(p.time)} · ${p.doneOn===ds?'Marked taken today':'Not marked today'}</span></div><button class="a-cal" onclick="pillModal('${p.id}')">Edit</button></div>`).join('')||'<div class="empty">No pill reminders yet.</div>'}</section>`}
+function pillModal(id){const p=(S.pills||[]).find(x=>x.id===id);openModal(`<h2>${p?'Edit':'Add'} pill reminder</h2><p class="meta">Enter the name and time from your prescribed or agreed routine.</p><form onsubmit="pillSave(event,'${p?p.id:''}')"><label for="pillName">Name</label><input id="pillName" maxlength="90" required value="${esc(p?p.name:'')}" placeholder="e.g. Evening tablet"><label for="pillTime">Reminder time</label><input id="pillTime" type="time" required value="${p?p.time:'09:00'}"><div class="mbtns"><button class="btn" type="submit">Save reminder</button>${p?`<button type="button" class="btn danger" onclick="pillDelete('${p.id}')">Delete</button>`:''}<button type="button" class="btn alt" onclick="closeModal()">Cancel</button></div></form>`)}
+function pillSave(e,id){e.preventDefault();const name=document.getElementById('pillName').value.trim(),time=document.getElementById('pillTime').value;if(!name||!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))return;S.pills=S.pills||[];const p=S.pills.find(x=>x.id===id);if(p){p.name=name;p.time=time}else S.pills.push({id:uid(),name,time,doneOn:''});save();closeModal();render();toast('Pill reminder saved')}
+function pillToggle(id){const p=(S.pills||[]).find(x=>x.id===id);if(!p)return;p.doneOn=p.doneOn===todayStr()?'':todayStr();save();render()}
+function pillDelete(id){S.pills=(S.pills||[]).filter(x=>x.id!==id);save();closeModal();render();toast('Reminder deleted')}
+/* Blossom Glow: home sticky notes are a compact view of existing notes, never a second store. */
+function homeStickyCard(){
+  const notes=(S.notes||[]).slice().sort((a,b)=>(b.pin?1:0)-(a.pin?1:0));
+  const shown=notes.filter(n=>!n.done).slice(0,3);
+  return `<section class="card bg-home-notes bg-led"><div class="bg-note-head"><h2>📌 Home sticky notes</h2><button class="btn alt" onclick="homeStickyAdd()">+ Quick Add</button></div>
+  <div class="bg-note-grid">${shown.map(n=>`<div class="bg-note" style="background:${n.color||'#fff3a8'}"><div class="bg-note-text">${esc(n.text||'')}</div><div class="bg-note-actions"><button onclick="noteModal('${n.id}')">Edit</button><button onclick="homeStickyDone('${n.id}')">✓ Done</button></div></div>`).join('')||'<p class="meta">No sticky notes yet. Add a little reminder 🌸</p>'}</div>
+  <button class="a-cal" onclick="homeStickyAll()">All notes (${notes.length})</button></section>`
+}
+function homeStickyAdd(){openModal(`<h2>📌 New sticky note</h2><form onsubmit="homeStickySave(event)"><label for="homeStickyText">Your note</label><textarea id="homeStickyText" rows="4" maxlength="2000" required placeholder="A little reminder…"></textarea><div class="mbtns"><button class="btn">Save sticky note</button><button type="button" class="btn alt" onclick="closeModal()">Cancel</button></div></form>`)}
+function homeStickySave(e){e.preventDefault();const t=document.getElementById('homeStickyText').value.trim();if(!t)return;S.notes.unshift({id:uid(),text:t,color:'#fff3a8',pin:false,img:''});save();closeModal();render();toast('Sticky note saved')}
+function homeStickyDone(id){const n=S.notes.find(x=>x.id===id);if(!n)return;n.pin=false;n.done=true;n.doneAt=new Date().toISOString();save();render();toast('Note marked done · still saved in All notes')}
+function homeStickyAll(){openModal(`<h2>📌 All sticky notes</h2>${(S.notes||[]).map(n=>`<div class="bg-note-all"><span>${esc(n.text||'')}</span><button class="a-cal" onclick="noteModal('${n.id}')">Edit</button></div>`).join('')||'<p>No notes yet.</p>'}<div class="mbtns"><button class="btn alt" onclick="closeModal()">Close</button></div>`)}
 function vToday(){
   const td=todayStr(),tasks=tasksFor(td);
   const open=tasks.filter(t=>!isDone(t,td)),done=tasks.filter(t=>isDone(t,td));
   const todays=S.appts.filter(a=>a.date===td).sort(byTime);
-  const next=upcoming().filter(a=>a.date!==td).slice(0,3);
-  const tm=addDays(td,1),tmT=S.tasks.filter(t=>occursOn(t,tm)).sort(byTime);
-  const gl=S.lists.find(l=>l.id==='groc'),need=gl?gl.items.filter(i=>!i.done).length:0;
   const row=t=>`<div class="row ${isDone(t,td)?'done':''}" data-sw="t:${t.id}:${td}"><button class="chk" data-pop="${t.id}" onclick="toggleTask('${t.id}','${td}')" aria-label="Tick ${esc(t.t)}">${isDone(t,td)?'✓':''}</button><div class="txt" onclick="taskModal('${t.id}')">${esc(t.t)}${t.time?` <span class="meta">· ${fmtTime(t.time)}</span>`:''}${t.rep?` <span class="meta">· 🔁 ${REP[t.rep]}</span>`:''}${!t.rep&&t.date<td&&!t.done?' <span class="badge soon">Earlier</span>':''}</div>${!t.rep&&t.date<td&&!t.done?`<button class="x" style="font-size:.85em;color:var(--pri);opacity:1;font-weight:800" onclick="moveToday('${t.id}')">Today</button>`:''}</div>`;
-  const askNotify=('Notification' in window&&Notification.permission==='default'&&!S.settings.askedN)?`<div class="card" style="background:var(--pri2)"><b>🔔 Want alerts when something is due?</b><div class="meta" style="margin:4px 0 10px">Your phone will buzz at the time you set.</div><div class="acts"><button class="btn" onclick="S.settings.askedN=1;enableNotify()" style="font-size:.9em">Turn on alerts</button><button class="btn alt" onclick="S.settings.askedN=1;save();render()" style="font-size:.9em">Not now</button></div></div>`:'';
-  return motiCard()+askNotify+`
-  <div class="card"><h2>📅 Today's appointments</h2>
-    ${todays.length?todays.map(a=>`<div class="appt today" onclick="apptModal('${a.id}')" style="cursor:pointer"><b>${esc(a.title)}</b><div class="meta">${a.time?fmtTime(a.time):'All day'}${a.place?' · '+esc(a.place):''}</div>${a.notes?`<div class="meta">${esc(a.notes)}</div>`:''}</div>`).join(''):'<div class="empty">Nothing booked today 🎉</div>'}
+  const askNotify=('Notification' in window&&Notification.permission==='default'&&!S.settings.askedN)?`<div class="card" style="background:var(--pri2)"><b>🔔 Want alerts when something is due?</b><div class="meta" style="margin:4px 0 10px">Alerts may appear while My Day is open. Background delivery is not guaranteed.</div><div class="acts"><button class="btn" onclick="S.settings.askedN=1;enableNotify()" style="font-size:.9em">Turn on alerts</button><button class="btn alt" onclick="S.settings.askedN=1;save();render()" style="font-size:.9em">Not now</button></div></div>`:'';
+  return `<section class="bg-home-hero bg-led"><span>✦ YOUR BEAUTIFUL DAY</span><h2>One little step at a time 🌸</h2><p>Make room for what matters, and a little time for yourself.</p><button onclick="tab='me';render()">Take a moment for me ♡</button></section>`+motiCard()+homeStickyCard()+`
+  <div class="card bg-coming-up"><h2>📅 Coming up</h2>
+    ${upcoming().slice(0,4).map(a=>`<button class="bg-upcoming-item" onclick="apptModal('${a.id}')"><strong>${esc(a.title)}</strong><span>${fmtDate(a.date)} · ${a.time?fmtTime(a.time):'All day'}</span></button>`).join('')||'<div class="empty">Nothing coming up yet. 🌸</div>'}
+    <button class="a-cal" onclick="tab='appts';render()">View calendar</button>
   </div>
+  ${pillCard()}
   <div class="card"><h2>✅ Things to do today ${tasks.length?`<span class="badge">${done.length}/${tasks.length}</span>`:''}</h2>
     ${winsLine()}
     ${open.length?open.map(row).join(''):tasks.length?'<div class="empty">All done for today. Well done! 🎉</div>':'<div class="empty">All clear. Add something below.</div>'}
@@ -629,11 +680,8 @@ function vToday(){
       <label>Repeat</label><select id="ntr">${Object.keys(REP).map(k=>`<option value="${k}">${REP[k]}</option>`).join('')}</select></details>
     ${done.length?`<div class="acts"><button class="a-del" onclick="showDone=!showDone;render()">${showDone?'Hide':'Show'} ticked (${done.length})</button><button class="a-del" onclick="clearDoneTasks()">Clear ticked</button></div>${showDone?done.map(row).join(''):''}`:''}
   </div>
-  ${next.length?`<div class="card"><h2>⏭️ Coming up</h2>${next.map(a=>`<div class="appt" onclick="apptModal('${a.id}')" style="cursor:pointer"><b>${esc(a.title)}</b> ${when(a.date)}<div class="meta">${fmtDate(a.date)}${a.time?' · '+fmtTime(a.time):''}</div></div>`).join('')}</div>`:''}
-  ${tmT.length?`<div class="card"><h2>🌙 Tomorrow</h2>${tmT.map(t=>`<div class="meta" style="padding:4px 0;color:var(--ink)">• ${esc(t.t)}${t.time?' · '+fmtTime(t.time):''}</div>`).join('')}</div>`:''}
-  ${rtCard()}
   ${S.settings.babyUrl?`<div class="card"><a class="btn" style="display:block;text-align:center;text-decoration:none" href="${esc(S.settings.babyUrl)}" target="_blank" rel="noopener">👶 Open baby tracker</a></div>`:''}
-  <div class="card" onclick="tab='lists';curList='groc';animTab=true;render()" style="cursor:pointer"><h2>🛒 Shopping</h2><div class="meta">${need?need+' item'+(need>1?'s':'')+' still to get':'Nothing on the list'} – tap to open</div></div>`}
+`}
 function listChips(sel){return `<div class="chips">${S.lists.map(x=>`<button class="chip ${x.id===sel?'on':''}" onclick="curList='${x.id}';confirmDel=false;render()">${x.emoji} ${esc(x.name)}</button>`).join('')}<button class="chip ${sel==='meals'?'on':''}" onclick="curList='meals';render()">🍽️ Meals</button></div>`}
 function listOverviewTiles(){
   const extras=S.lists.filter(x=>x.id!=='groc');
@@ -659,9 +707,15 @@ function apptCard(a){
   return `<div class="appt ${daysUntil(a.date)===0?'today':''}"><b>${esc(a.title)}</b> ${when(a.date)}
     <div class="meta">${fmtDate(a.date)} · ${a.time?fmtTime(a.time):'All day'}${a.place?' · 📍 '+esc(a.place):''}</div>${a.notes?`<div class="meta">${esc(a.notes)}</div>`:''}
     <div class="acts"><a class="a-cal" href="${link}" target="_blank" rel="noopener">📲 Add to Google Calendar</a><button class="a-cal" onclick="icsAppt('${a.id}')">Calendar file</button><button class="a-del" onclick="apptModal('${a.id}')">Edit</button></div></div>`}
+/* Blossom Glow appointment calendar: read-only date selection, existing editor retained. */
+let bgMonth=todayStr().slice(0,7),bgDay=todayStr();
+function bgMoveMonth(delta){const [y,m]=bgMonth.split('-').map(Number);const d=new Date(y,m-1+delta,1);bgMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');bgDay=bgMonth+'-01';render()}
+function bgChooseDay(date){bgDay=date;render()}
+function bgType(a){const v=((a.title||'')+' '+(a.notes||'')).toLowerCase();if(/baby|doctor|gp|health|hospital|clinic|vaccine|dentist|midwife/.test(v))return 'health';if(/family|school|nursery|parent/.test(v))return 'family';if(/hair|beauty|salon|self|personal/.test(v))return 'personal';return 'other'}
+function bgCalendar(){const [y,m]=bgMonth.split('-').map(Number),first=(new Date(y,m-1,1).getDay()+6)%7,last=new Date(y,m,0).getDate();const name=new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});const cells=Array.from({length:Math.ceil((first+last)/7)*7},(_,i)=>{const d=i-first+1;if(d<1||d>last)return '<span class="bg-empty"></span>';const iso=bgMonth+'-'+String(d).padStart(2,'0'),events=S.appts.filter(a=>a.date===iso),tone=events.length?bgType(events[0]):'',active=iso===bgDay;return `<button type="button" class="bg-day ${tone?'bg-'+tone:''} ${active?'bg-selected':''}" aria-label="${d} ${name}, ${events.length} appointments" aria-pressed="${active}" onclick="bgChooseDay('${iso}')"><strong>${d}</strong>${events.length?`<span class="bg-dots">${events.slice(0,3).map(a=>`<i class="bg-dot bg-${bgType(a)}"></i>`).join('')}</span>`:''}</button>`}).join('');const chosen=S.appts.filter(a=>a.date===bgDay).sort(byTime);return `<section class="bg-calendar bg-led"><div class="bg-calendar-heading"><button class="bg-arrow" onclick="bgMoveMonth(-1)" aria-label="Previous month">‹</button><h2>${name}</h2><button class="bg-arrow" onclick="bgMoveMonth(1)" aria-label="Next month">›</button></div><div class="bg-calendar-grid">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<span class="bg-weekday">${d}</span>`).join('')}${cells}</div><div class="bg-legend"><span><i class="bg-dot bg-health"></i> Health</span><span><i class="bg-dot bg-family"></i> Family</span><span><i class="bg-dot bg-personal"></i> Personal</span><span><i class="bg-dot bg-other"></i> Other</span></div><div class="bg-selected-events"><strong>${new Date(bgDay+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</strong>${chosen.length?chosen.map(a=>`<button onclick="apptModal('${a.id}')">${esc(a.title)} ${a.time?'· '+fmtTime(a.time):''}</button>`).join(''):'<p>No appointments on this date.</p>'}</div></section>`}
 function vAppts(){
   const up=upcoming(),past=S.appts.filter(a=>daysUntil(a.date)<0).sort((a,b)=>b.date.localeCompare(a.date));
-  return `<button class="btn" style="width:100%;margin:10px 0" onclick="apptModal()">➕ Add an appointment</button>
+  return `<div class="bg-section-hero"><span>✦ YOUR SCHEDULE</span><h2>Appointments</h2><p>Important dates, beautifully organised.</p></div>${bgCalendar()}<button class="btn" style="width:100%;margin:10px 0" onclick="apptModal()">➕ Add an appointment</button>
   <div class="card"><h2>📅 Upcoming</h2>${up.length?up.map(apptCard).join(''):'<div class="empty">No appointments yet.</div>'}
     <div class="tip">💡 Tap <b>Add to Google Calendar</b>, then <b>Save</b> in the page that opens. Google will then send phone reminders even when this app is closed.</div>
     <div class="acts"><a class="a-cal" href="${esc(S.settings.cal)}" target="_blank" rel="noopener">Open my Google Calendar</a></div></div>
@@ -738,7 +792,7 @@ function render(){
   };
   $('#app').querySelectorAll('.card:not(.md131-panel):not(.md131-feature)').forEach(card=>{
     const title=card.querySelector('h2');
-    if(title){card.classList.add('md131-colour-card');card.dataset.tone=toneOf(title.textContent||'');}
+    if(title){card.classList.add('md131-colour-card');card.dataset.tone=toneOf(title.textContent||'');const h=(title.textContent||'').toLowerCase();if(/verse of the day/.test(h))card.classList.add('bg-verse','bg-led');else if(/priority|tomorrow|shopping|sticky|appointment/.test(h))card.classList.add('bg-accent-card');}
   });
   document.body.dataset.section=tab;
 

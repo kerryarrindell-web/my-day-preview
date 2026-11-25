@@ -1,1 +1,1 @@
-Blossom Glow visual repair v3. Network-first service worker; cache-busted CSS/JS; critical inline colour and calendar rules. Upload ALL files to preview repo root. Preview only; no changes to saved data keys.
+My Day Blossom Glow consolidated v6. Approved Today order: welcome, mint Baby Tip, matching plum-to-rose Bible Verse, Home Sticky Notes, Coming Up, Pill Reminders, Things To Do. Includes reference opening video, calendar and Me Time refinements. Preview only. Do not overwrite live app until acceptance testing.

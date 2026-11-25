@@ -216,7 +216,64 @@ body:not(.dark) #app .bg-calendar{background:linear-gradient(145deg,#262a50,#1c2
 #app .bg-calendar h2,#app .bg-calendar .bg-weekday,#app .bg-calendar .bg-legend{color:#fff!important}
 #app{padding-bottom:max(150px,calc(120px + env(safe-area-inset-bottom)))!important}
 @media(prefers-reduced-motion:reduce){.bg-home-hero,.bg-section-hero,.bg-calendar{animation:none!important}}
-</style></head>
+</style><style id="blossom-polish-v4">
+body:not(.dark) #app .bg-home-notes{background:linear-gradient(125deg,#f5d4a5,#fff0d7)!important}
+body:not(.dark) #app .bg-coming-up{background:linear-gradient(125deg,#d3c4f4,#eee5ff)!important}
+body:not(.dark) #app .bg-pills{background:linear-gradient(125deg,#efbfd5,#ffe5ee)!important}
+body:not(.dark) #app .bg-verse{background:linear-gradient(125deg,#594187,#7958aa)!important}
+body:not(.dark) #app .md131-colour-card[data-tone="rose"]{background:linear-gradient(125deg,#f5c9dd,#ffebf2)!important}
+body:not(.dark) #app .md131-colour-card[data-tone="mint"]{background:linear-gradient(125deg,#bce3d5,#e9f8f1)!important}
+body:not(.dark) #app .md131-colour-card[data-tone="peach"]{background:linear-gradient(125deg,#f6d3a2,#fff1d8)!important}
+body:not(.dark) #app .md131-colour-card[data-tone="lavender"]{background:linear-gradient(125deg,#d4c5f2,#f0eaff)!important}
+body:not(.dark) #app .md131-colour-card[data-tone="berry"]{background:linear-gradient(125deg,#efbfd5,#ffe5ee)!important}
+#app .bg-home-notes button,#app .bg-coming-up button,#app .bg-pills button,#app .md131-colour-card button,#app .bg-verse button{border-radius:999px!important;padding:10px 16px!important;font-weight:700!important}
+#app .md131-panel.pink{background:linear-gradient(135deg,#a34e80,#813d75)!important;color:#fff!important}
+#app .md131-panel.orange{background:linear-gradient(135deg,#a66c42,#82513c)!important;color:#fff!important}
+#app .md131-panel.pink p,#app .md131-panel.orange p,#app .md131-panel.pink h2,#app .md131-panel.orange h2,#app .md131-panel.pink label,#app .md131-panel.orange label{color:#fff!important;opacity:1!important}
+#app .md131-panel .md131-surprise,#app .md131-panel .md131-surprise p{color:#fff!important}
+#app .md131-panel .md131-templates button,#app .md131-panel .md131-categories button{color:#4e2e4d!important;background:#fff2f8!important;border-radius:999px!important}
+#app .md131-panel .md131-action{background:#fff5fb!important;color:#713f69!important;border-radius:999px!important}
+#app .md131-panel .md131-categories button.active{background:#f8cae2!important}
+#app .bg-calendar .bg-day.bg-selected{box-shadow:0 0 0 2px #ffd78c,0 0 12px #ffd78c70!important}
+</style>
+<style id="blossom-motion-colour-v6">
+/* Approved Today order: welcome -> Baby Tip -> Bible Verse; same plum/rose on first and third, distinct mint in middle. */
+body:not(.dark) #app .bg-home-hero,body:not(.dark) #app .bg-verse,
+body:not(.dark) #app .card.bg-verse,
+body:not(.dark) #app .md131-colour-card.bg-verse{
+ background:linear-gradient(130deg,#80507d 0%,#9a598b 52%,#b96b9e 100%)!important;
+ color:#fff!important;border:2px solid #dca5cd!important;
+ box-shadow:0 5px 18px rgba(160,89,142,.18),inset 0 1px 0 #ffffff44!important;
+}
+#app .bg-verse :is(h2,p,blockquote,.meta,.md11-verse),#app .bg-verse :is(h2,p,blockquote,.meta,.md11-verse) *{color:#fff!important}
+#app .bg-verse button{background:#fff1f8!important;color:#754267!important;border:1px solid #f5cde5!important;border-radius:999px!important}
+body:not(.dark) #app .bg-baby-tip{
+ background:linear-gradient(125deg,#c4e9dc 0%,#e4f6ee 58%,#f4fbf6 100%)!important;
+ border:1.5px solid #8ac8b1!important;box-shadow:0 5px 16px rgba(67,143,119,.12)!important;
+ color:#285c4e!important;
+}
+body:not(.dark) #app .bg-baby-tip :is(.meta,.mq,summary){color:#285c4e!important}
+#app .bg-baby-tip button{background:#fffafc!important;color:#316b5b!important;border:1px solid #9bcdbd!important;border-radius:999px!important;font-weight:750!important}
+/* Gentle one-shot reveal, tactile interactions; no infinite effects. */
+@keyframes blossom-card-in{from{opacity:.75;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+#app .bg-home-hero,#app .bg-verse,#app .bg-baby-tip,#app .bg-home-notes,#app .bg-coming-up,#app .bg-pills,#app .bg-calendar,#app .md131-colour-card{
+ animation:blossom-card-in .48s cubic-bezier(.2,.75,.2,1) both;
+ transition:box-shadow .22s ease,border-color .22s ease,transform .18s ease;
+}
+#app .bg-home-hero{animation-delay:0ms}
+#app .bg-baby-tip{animation-delay:35ms}
+#app .bg-verse{animation-delay:65ms}
+#app .bg-home-notes{animation-delay:90ms}
+#app .bg-coming-up{animation-delay:115ms}
+#app .bg-pills{animation-delay:140ms}
+#app :is(.bg-home-hero,.bg-verse,.bg-baby-tip,.bg-home-notes,.bg-coming-up,.bg-pills,.md131-colour-card) button{
+ transition:transform .16s ease,filter .16s ease,box-shadow .16s ease;border-radius:999px!important;
+}
+#app :is(.bg-home-hero,.bg-verse,.bg-baby-tip,.bg-home-notes,.bg-coming-up,.bg-pills,.md131-colour-card) button:active{transform:scale(.965);filter:brightness(.97)}
+@media(hover:hover) and (pointer:fine){#app :is(.bg-home-hero,.bg-verse,.bg-baby-tip,.bg-home-notes,.bg-coming-up,.bg-pills,.md131-colour-card):hover{box-shadow:0 8px 24px #8c578522!important;transform:translateY(-2px)}}
+@media(prefers-reduced-motion:reduce){#app :is(.bg-home-hero,.bg-verse,.bg-baby-tip,.bg-home-notes,.bg-coming-up,.bg-pills,.bg-calendar,.md131-colour-card),#app :is(.bg-home-hero,.bg-verse,.bg-baby-tip,.bg-home-notes,.bg-coming-up,.bg-pills,.md131-colour-card) button{animation:none!important;transition:none!important;transform:none!important}}
+</style>
+</head>
 <body data-size="m">
 <div id="myday-opening" aria-label="My Day opening animation">
   <video id="myday-opening-video" autoplay muted playsinline preload="auto" aria-hidden="true"><source src="myday-opening.mp4" type="video/mp4"></video>
@@ -516,7 +573,7 @@ function motiSave(){const m=motiToday();S.notes.unshift({id:uid(),text:m[1],colo
 function motiCard(){
   if(S.settings.moti===false)return '';
   const m=motiToday(),label=m[0]==='💛'?'A little encouragement':m[0]==='🍼'?'Baby tip':'Look after you';
-  return `<div class="card moti"><div class="meta" style="font-weight:800">${m[0]} ${label}</div><div class="mq">${esc(m[1])}</div>
+  return `<div class="card moti bg-baby-tip"><div class="meta" style="font-weight:800">${m[0]} ${label}</div><div class="mq">${esc(m[1])}</div>
     <div class="acts"><button class="a-cal" onclick="motiNext()">Another one</button><button class="a-cal" onclick="motiSave()">Save to Notes</button></div>
     <details ${motiHelp?'open':''} ontoggle="motiHelp=this.open"><summary style="font-weight:800">💛 Finding it hard? Help is here</summary>
       <p>Feeling low, anxious or overwhelmed after having a baby is very common, and it can be treated. Tell your GP, health visitor or midwife. They won’t judge you.</p>
@@ -555,9 +612,9 @@ function vMeals(){
   return h+'<button class="btn" style="width:100%" onclick="mealAddAll()">Add the whole week to Groceries</button></div>'}
 
 /* ---------- appointments ---------- */
-function apptModal(id){
+function apptModal(id,initialDate){
   const a=id?S.appts.find(x=>x.id===id):null;
-  const v=a||{title:'',date:todayStr(),time:'',place:'',notes:'',dur:60,remind:60};
+  const v=a||{title:'',date:/^\d{4}-\d{2}-\d{2}$/.test(initialDate||'')?initialDate:todayStr(),time:'',place:'',notes:'',dur:60,remind:60};
   const r=v.remind==null?60:v.remind;
   openModal(`<h2>${a?'Edit appointment':'New appointment'}</h2><form onsubmit="saveAppt(event,'${a?a.id:''}')">
     <label>What is it?</label><div class="add" style="margin:0"><input id="at" value="${esc(v.title)}" placeholder="e.g. Baby clinic" required>${micBtn('at')}</div>
@@ -732,12 +789,12 @@ function apptCard(a){
 /* Blossom Glow appointment calendar: read-only date selection, existing editor retained. */
 let bgMonth=todayStr().slice(0,7),bgDay=todayStr();
 function bgMoveMonth(delta){const [y,m]=bgMonth.split('-').map(Number);const d=new Date(y,m-1+delta,1);bgMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');bgDay=bgMonth+'-01';render()}
-function bgChooseDay(date){bgDay=date;render()}
+function bgChooseDay(date){bgDay=date;render();openModal(`<h2>${new Date(date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</h2><p>Add an appointment to the selected date, or return to the calendar.</p><div class="mbtns"><button type="button" class="btn" onclick="closeModal();apptModal(null,'${date}')">＋ Add appointment</button><button type="button" class="btn alt" onclick="closeModal()">View calendar</button></div>`)}
 function bgType(a){const v=((a.title||'')+' '+(a.notes||'')).toLowerCase();if(/baby|doctor|gp|health|hospital|clinic|vaccine|dentist|midwife/.test(v))return 'health';if(/family|school|nursery|parent/.test(v))return 'family';if(/hair|beauty|salon|self|personal/.test(v))return 'personal';return 'other'}
 function bgCalendar(){const [y,m]=bgMonth.split('-').map(Number),first=(new Date(y,m-1,1).getDay()+6)%7,last=new Date(y,m,0).getDate();const name=new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});const cells=Array.from({length:Math.ceil((first+last)/7)*7},(_,i)=>{const d=i-first+1;if(d<1||d>last)return '<span class="bg-empty"></span>';const iso=bgMonth+'-'+String(d).padStart(2,'0'),events=S.appts.filter(a=>a.date===iso),tone=events.length?bgType(events[0]):'',active=iso===bgDay;return `<button type="button" class="bg-day ${tone?'bg-'+tone:''} ${active?'bg-selected':''}" aria-label="${d} ${name}, ${events.length} appointments" aria-pressed="${active}" onclick="bgChooseDay('${iso}')"><strong>${d}</strong>${events.length?`<span class="bg-dots">${events.slice(0,3).map(a=>`<i class="bg-dot bg-${bgType(a)}"></i>`).join('')}</span>`:''}</button>`}).join('');const chosen=S.appts.filter(a=>a.date===bgDay).sort(byTime);return `<section class="bg-calendar bg-led"><div class="bg-calendar-heading"><button class="bg-arrow" onclick="bgMoveMonth(-1)" aria-label="Previous month">‹</button><h2>${name}</h2><button class="bg-arrow" onclick="bgMoveMonth(1)" aria-label="Next month">›</button></div><div class="bg-calendar-grid">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<span class="bg-weekday">${d}</span>`).join('')}${cells}</div><div class="bg-legend"><span><i class="bg-dot bg-health"></i> Health</span><span><i class="bg-dot bg-family"></i> Family</span><span><i class="bg-dot bg-personal"></i> Personal</span><span><i class="bg-dot bg-other"></i> Other</span></div><div class="bg-selected-events"><strong>${new Date(bgDay+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</strong>${chosen.length?chosen.map(a=>`<button onclick="apptModal('${a.id}')">${esc(a.title)} ${a.time?'· '+fmtTime(a.time):''}</button>`).join(''):'<p>No appointments on this date.</p>'}</div></section>`}
 function vAppts(){
   const up=upcoming(),past=S.appts.filter(a=>daysUntil(a.date)<0).sort((a,b)=>b.date.localeCompare(a.date));
-  return `<div class="bg-section-hero"><span>✦ YOUR SCHEDULE</span><h2>Appointments</h2><p>Important dates, beautifully organised.</p></div>${bgCalendar()}<button class="btn" style="width:100%;margin:10px 0" onclick="apptModal()">➕ Add an appointment</button>
+  return `<div class="bg-section-hero"><span>✦ YOUR SCHEDULE</span><h2>Appointments</h2><p>Important dates, beautifully organised.</p></div>${bgCalendar()}<button class="btn" style="width:100%;margin:10px 0" onclick="apptModal(null,bgDay)">➕ Add an appointment</button>
   <div class="card"><h2>📅 Upcoming</h2>${up.length?up.map(apptCard).join(''):'<div class="empty">No appointments yet.</div>'}
     <div class="tip">💡 Tap <b>Add to Google Calendar</b>, then <b>Save</b> in the page that opens. Google will then send phone reminders even when this app is closed.</div>
     <div class="acts"><a class="a-cal" href="${esc(S.settings.cal)}" target="_blank" rel="noopener">Open my Google Calendar</a></div></div>

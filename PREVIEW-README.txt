@@ -1,1 +1,1 @@
-My Day Blossom Glow consolidated v6. Approved Today order: welcome, mint Baby Tip, matching plum-to-rose Bible Verse, Home Sticky Notes, Coming Up, Pill Reminders, Things To Do. Includes reference opening video, calendar and Me Time refinements. Preview only. Do not overwrite live app until acceptance testing.
+My Day Blossom Glow v7 - colour-coded home, lists and calendar, compact list tiles, improved bottom clearance. PREVIEW ONLY. Do not replace production until accepted. Existing localStorage key myday-v1 unchanged.

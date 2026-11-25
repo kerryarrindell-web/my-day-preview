@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-  <link rel="stylesheet" href="my-day-v11.css?v=blossom-visual-3">
+  <link rel="stylesheet" href="my-day-v11.css?v=blossom-v7">
 <meta charset="utf-8">
 <title>My Day</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -272,6 +272,43 @@ body:not(.dark) #app .bg-baby-tip :is(.meta,.mq,summary){color:#285c4e!important
 #app :is(.bg-home-hero,.bg-verse,.bg-baby-tip,.bg-home-notes,.bg-coming-up,.bg-pills,.md131-colour-card) button:active{transform:scale(.965);filter:brightness(.97)}
 @media(hover:hover) and (pointer:fine){#app :is(.bg-home-hero,.bg-verse,.bg-baby-tip,.bg-home-notes,.bg-coming-up,.bg-pills,.md131-colour-card):hover{box-shadow:0 8px 24px #8c578522!important;transform:translateY(-2px)}}
 @media(prefers-reduced-motion:reduce){#app :is(.bg-home-hero,.bg-verse,.bg-baby-tip,.bg-home-notes,.bg-coming-up,.bg-pills,.bg-calendar,.md131-colour-card),#app :is(.bg-home-hero,.bg-verse,.bg-baby-tip,.bg-home-notes,.bg-coming-up,.bg-pills,.md131-colour-card) button{animation:none!important;transition:none!important;transform:none!important}}
+</style>
+
+<style id="blossom-v7-contrast-layout">
+/* v7: section-specific surfaces outrank generic automatic tone assignment. */
+body:not(.dark) #app .card.bg-home-notes,body:not(.dark) #app .card.bg-home-notes.md131-colour-card{background:linear-gradient(135deg,#f5d5a9,#fff1d9)!important;border:1.5px solid #d8a361!important;--md-card-heading:#70491e!important}
+body:not(.dark) #app .card.bg-coming-up,body:not(.dark) #app .card.bg-coming-up.md131-colour-card{background:linear-gradient(135deg,#d5c8f4,#f0eaff)!important;border:1.5px solid #aa93d9!important;--md-card-heading:#514078!important}
+body:not(.dark) #app .card.bg-pills,body:not(.dark) #app .card.bg-pills.md131-colour-card{background:linear-gradient(135deg,#eebfd4,#ffe6ef)!important;border:1.5px solid #d58fab!important;--md-card-heading:#783d5b!important}
+body:not(.dark) #app .card.bg-today-tasks,body:not(.dark) #app .card.bg-today-tasks.md131-colour-card{background:linear-gradient(135deg,#d5e8fb,#f1f7ff)!important;border:1.5px solid #91b8df!important;--md-card-heading:#315a85!important}
+body:not(.dark) #app .card.bg-list-overview,body:not(.dark) #app .card.bg-list-overview.md131-colour-card{background:linear-gradient(135deg,#fbe4c0,#fff4df)!important;border:1.5px solid #e5b77d!important;--md-card-heading:#76502b!important}
+body:not(.dark) #app .card.bg-new-list,body:not(.dark) #app .card.bg-new-list.md131-colour-card{background:linear-gradient(135deg,#e5d8f6,#f8f0ff)!important;border:1.5px solid #bba2dd!important;--md-card-heading:#604583!important}
+body:not(.dark) #app .card.bg-active-list,body:not(.dark) #app .card.bg-active-list.md131-colour-card{background:linear-gradient(135deg,#e1f0e8,#f4faf4)!important;border:1.5px solid #9ac8b0!important;--md-card-heading:#2e6654!important}
+/* Tile dimensions override the generic rounded-pill button rule. */
+#app .myday-list-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;align-items:stretch!important}
+#app .myday-list-grid .myday-list-tile{box-sizing:border-box!important;display:flex!important;flex-direction:column!important;justify-content:flex-start!important;align-items:flex-start!important;min-width:0!important;width:100%!important;min-height:150px!important;height:auto!important;padding:15px 12px!important;margin:0!important;text-align:left!important;white-space:normal!important;overflow:hidden!important;border:1.5px solid var(--list-accent)!important;border-left:5px solid var(--list-accent)!important;border-radius:18px!important;background:linear-gradient(135deg,var(--list-tint),#fffafc)!important;box-shadow:0 3px 9px #55334413!important;color:#3f3340!important;gap:7px!important;line-height:1.3!important;transform:none!important}
+#app .myday-list-tile .myday-list-icon{font-size:1.45rem!important;line-height:1.2!important}
+#app .myday-list-tile strong{font-size:1rem!important;font-weight:800!important;line-height:1.28!important;overflow-wrap:anywhere!important;color:#3f3340!important}
+#app .myday-list-tile small{font-size:.79rem!important;color:#655a65!important}
+#app .myday-list-tile .myday-list-open{font-size:.82rem!important;margin-top:auto!important;color:var(--list-accent)!important}
+#app .myday-list-tile:active{transform:scale(.98)!important}
+/* Calendar: saturated event fills and matching readable selected-day entries. */
+#app .bg-calendar .bg-day.bg-health{background:linear-gradient(140deg,#9e437a,#bc548d)!important}
+#app .bg-calendar .bg-day.bg-family{background:linear-gradient(140deg,#6044ae,#8467cf)!important}
+#app .bg-calendar .bg-day.bg-personal{background:linear-gradient(140deg,#147d78,#2a9b91)!important}
+#app .bg-calendar .bg-day.bg-other{background:linear-gradient(140deg,#966026,#c28a4b)!important}
+#app .bg-calendar .bg-selected-events .bg-event-health{background:#79395f!important;border-left:5px solid #ee8db9!important}
+#app .bg-calendar .bg-selected-events .bg-event-family{background:#49378a!important;border-left:5px solid #a18aff!important}
+#app .bg-calendar .bg-selected-events .bg-event-personal{background:#126b69!important;border-left:5px solid #57d2bc!important}
+#app .bg-calendar .bg-selected-events .bg-event-other{background:#74502d!important;border-left:5px solid #edb36e!important}
+#app .appt.bg-event-health{border-left:5px solid #d46b9e!important}
+#app .appt.bg-event-family{border-left:5px solid #8a73d3!important}
+#app .appt.bg-event-personal{border-left:5px solid #36a597!important}
+#app .appt.bg-event-other{border-left:5px solid #d6a05e!important}
+/* Float above nav without covering the current text-entry controls when scrolling. */
+#md11-fab{bottom:calc(104px + env(safe-area-inset-bottom))!important;right:18px!important;padding:11px 14px!important;font-size:.86rem!important;max-width:135px!important}
+#app{padding-bottom:max(220px,calc(190px + env(safe-area-inset-bottom)))!important}
+@media(max-width:380px){#app .myday-list-grid{gap:9px!important}#app .myday-list-grid .myday-list-tile{padding:12px 10px!important;min-height:145px!important}#md11-fab{font-size:.8rem!important;padding:10px 12px!important}}
+@media(prefers-reduced-motion:reduce){#app .myday-list-tile{transition:none!important}}
 </style>
 </head>
 <body data-size="m">
@@ -749,7 +786,7 @@ function vToday(){
     <button class="a-cal" onclick="tab='appts';render()">View calendar</button>
   </div>
   ${pillCard()}
-  <div class="card"><h2>✅ Things to do today ${tasks.length?`<span class="badge">${done.length}/${tasks.length}</span>`:''}</h2>
+  <div class="card bg-today-tasks"><h2>✅ Things to do today ${tasks.length?`<span class="badge">${done.length}/${tasks.length}</span>`:''}</h2>
     ${winsLine()}
     ${open.length?open.map(row).join(''):tasks.length?'<div class="empty">All done for today. Well done! 🎉</div>':'<div class="empty">All clear. Add something below.</div>'}
     <div class="add"><input id="nt" placeholder="e.g. Call the GP at 3pm" onkeydown="if(event.key==='Enter')addTask()" autocomplete="off">${micBtn('nt')}<button class="btn" onclick="addTask()">Add</button></div>
@@ -765,14 +802,14 @@ function listChips(sel){return `<div class="chips">${S.lists.map(x=>`<button cla
 function listOverviewTiles(){
   const extras=S.lists.filter(x=>x.id!=='groc');
   if(!extras.length)return '';
-  return `<div class="card"><h2>🛍️ My other lists</h2><div class="myday-list-grid">${extras.map((x,i)=>`<button type="button" class="myday-list-tile" style="--list-accent:${['#7658ac','#a64e82','#2b8577','#b77840'][i%4]}" onclick="curList='${x.id}';confirmDel=false;render();window.scrollTo({top:0,behavior:'auto'})"><span class="myday-list-icon">${x.emoji}</span><strong>${esc(x.name)}</strong><small>${x.items.filter(it=>!it.done).length} to get · ${x.items.length} total</small><span class="myday-list-open">Open list →</span></button>`).join('')}</div></div>`;
+  return `<div class="card bg-list-overview"><h2>🛍️ My other lists</h2><div class="myday-list-grid">${extras.map((x,i)=>`<button type="button" class="myday-list-tile" style="--list-accent:${['#7658ac','#a64e82','#2b8577','#b77840'][i%4]};--list-tint:${['#eee7ff','#ffe5f1','#ddf4ec','#fff0d7'][i%4]}" onclick="curList='${x.id}';confirmDel=false;render();window.scrollTo({top:0,behavior:'auto'})"><span class="myday-list-icon">${x.emoji}</span><strong>${esc(x.name)}</strong><small>${x.items.filter(it=>!it.done).length} to get · ${x.items.length} total</small><span class="myday-list-open">Open list →</span></button>`).join('')}</div></div>`;
 }
 function vLists(){
   if(curList==='meals')return listChips('meals')+vMeals();
   const l=curL(),open=l.items.filter(i=>!i.done),done=l.items.filter(i=>i.done);
   return `
   ${listChips(l.id)}
-  <div class="card"><h2>${l.emoji} ${esc(l.name)}</h2>
+  <div class="card bg-active-list"><h2>${l.emoji} ${esc(l.name)}</h2>
     <div class="add" style="margin:0 0 8px"><input id="ni" placeholder="Add items (e.g. milk, nappies, bread)" onkeydown="if(event.key==='Enter')addItem()" autocomplete="off">${micBtn('ni')}<button class="btn" onclick="addItem()">Add</button></div>
     ${[...open,...done].map(i=>`<div class="row ${i.done?'done':''}" data-sw="i:${i.id}"><button class="chk" data-pop="${i.id}" onclick="toggleItem('${i.id}')" aria-label="Tick ${esc(i.t)}">${i.done?'✓':''}</button><div class="txt" onclick="toggleItem('${i.id}')">${esc(i.t)}</div><button class="x" onclick="delItem('${i.id}')" aria-label="Remove ${esc(i.t)}">×</button></div>`).join('')||'<div class="empty">Empty list. Type or speak what you need 🎤</div>'}
     <div class="acts">${open.length?`<button class="a-cal" onclick="shareList()">📤 Share list</button><a class="a-cal" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(shareText(l))}">WhatsApp</a>`:''}${done.length?`<button class="a-del" onclick="clearDoneItems()">Remove ticked</button><button class="a-del" onclick="uncheckAll()">Untick all (reuse list)</button>`:''}
@@ -780,18 +817,18 @@ function vLists(){
   </div>
   ${l.id==='groc'?quickCard(l):''}
   ${listOverviewTiles()}
-  <div class="card"><h2>➕ New list</h2><div class="add" style="margin:0"><input id="nl" placeholder="e.g. Chemist, Pack for hospital" onkeydown="if(event.key==='Enter')newListGo()"><button class="btn alt" onclick="newListGo()">Create</button></div></div>`}
+  <div class="card bg-new-list"><h2>➕ New list</h2><div class="add" style="margin:0"><input id="nl" placeholder="e.g. Chemist, Pack for hospital" onkeydown="if(event.key==='Enter')newListGo()"><button class="btn alt" onclick="newListGo()">Create</button></div></div>`}
 function apptCard(a){
   const link=gcal({title:a.title,date:a.date,time:a.time,dur:a.dur,place:a.place,notes:a.notes});
-  return `<div class="appt ${daysUntil(a.date)===0?'today':''}"><b>${esc(a.title)}</b> ${when(a.date)}
+  return `<div class="appt bg-event-${bgType(a)} ${daysUntil(a.date)===0?'today':''}"><b>${esc(a.title)}</b> ${when(a.date)}
     <div class="meta">${fmtDate(a.date)} · ${a.time?fmtTime(a.time):'All day'}${a.place?' · 📍 '+esc(a.place):''}</div>${a.notes?`<div class="meta">${esc(a.notes)}</div>`:''}
     <div class="acts"><a class="a-cal" href="${link}" target="_blank" rel="noopener">📲 Add to Google Calendar</a><button class="a-cal" onclick="icsAppt('${a.id}')">Calendar file</button><button class="a-del" onclick="apptModal('${a.id}')">Edit</button></div></div>`}
 /* Blossom Glow appointment calendar: read-only date selection, existing editor retained. */
 let bgMonth=todayStr().slice(0,7),bgDay=todayStr();
 function bgMoveMonth(delta){const [y,m]=bgMonth.split('-').map(Number);const d=new Date(y,m-1+delta,1);bgMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');bgDay=bgMonth+'-01';render()}
 function bgChooseDay(date){bgDay=date;render();openModal(`<h2>${new Date(date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</h2><p>Add an appointment to the selected date, or return to the calendar.</p><div class="mbtns"><button type="button" class="btn" onclick="closeModal();apptModal(null,'${date}')">＋ Add appointment</button><button type="button" class="btn alt" onclick="closeModal()">View calendar</button></div>`)}
-function bgType(a){const v=((a.title||'')+' '+(a.notes||'')).toLowerCase();if(/baby|doctor|gp|health|hospital|clinic|vaccine|dentist|midwife/.test(v))return 'health';if(/family|school|nursery|parent/.test(v))return 'family';if(/hair|beauty|salon|self|personal/.test(v))return 'personal';return 'other'}
-function bgCalendar(){const [y,m]=bgMonth.split('-').map(Number),first=(new Date(y,m-1,1).getDay()+6)%7,last=new Date(y,m,0).getDate();const name=new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});const cells=Array.from({length:Math.ceil((first+last)/7)*7},(_,i)=>{const d=i-first+1;if(d<1||d>last)return '<span class="bg-empty"></span>';const iso=bgMonth+'-'+String(d).padStart(2,'0'),events=S.appts.filter(a=>a.date===iso),tone=events.length?bgType(events[0]):'',active=iso===bgDay;return `<button type="button" class="bg-day ${tone?'bg-'+tone:''} ${active?'bg-selected':''}" aria-label="${d} ${name}, ${events.length} appointments" aria-pressed="${active}" onclick="bgChooseDay('${iso}')"><strong>${d}</strong>${events.length?`<span class="bg-dots">${events.slice(0,3).map(a=>`<i class="bg-dot bg-${bgType(a)}"></i>`).join('')}</span>`:''}</button>`}).join('');const chosen=S.appts.filter(a=>a.date===bgDay).sort(byTime);return `<section class="bg-calendar bg-led"><div class="bg-calendar-heading"><button class="bg-arrow" onclick="bgMoveMonth(-1)" aria-label="Previous month">‹</button><h2>${name}</h2><button class="bg-arrow" onclick="bgMoveMonth(1)" aria-label="Next month">›</button></div><div class="bg-calendar-grid">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<span class="bg-weekday">${d}</span>`).join('')}${cells}</div><div class="bg-legend"><span><i class="bg-dot bg-health"></i> Health</span><span><i class="bg-dot bg-family"></i> Family</span><span><i class="bg-dot bg-personal"></i> Personal</span><span><i class="bg-dot bg-other"></i> Other</span></div><div class="bg-selected-events"><strong>${new Date(bgDay+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</strong>${chosen.length?chosen.map(a=>`<button onclick="apptModal('${a.id}')">${esc(a.title)} ${a.time?'· '+fmtTime(a.time):''}</button>`).join(''):'<p>No appointments on this date.</p>'}</div></section>`}
+function bgType(a){const v=((a.title||'')+' '+(a.notes||'')).toLowerCase();if(/baby|doctor|gp|health|hospital|clinic|vaccine|dentist|midwife/.test(v))return 'health';if(/family|school|nursery|parent/.test(v))return 'family';if(/hair|beauty|salon|spa|nails|massage|self|personal/.test(v))return 'personal';return 'other'}
+function bgCalendar(){const [y,m]=bgMonth.split('-').map(Number),first=(new Date(y,m-1,1).getDay()+6)%7,last=new Date(y,m,0).getDate();const name=new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});const cells=Array.from({length:Math.ceil((first+last)/7)*7},(_,i)=>{const d=i-first+1;if(d<1||d>last)return '<span class="bg-empty"></span>';const iso=bgMonth+'-'+String(d).padStart(2,'0'),events=S.appts.filter(a=>a.date===iso),tone=events.length?bgType(events[0]):'',active=iso===bgDay;return `<button type="button" class="bg-day ${tone?'bg-'+tone:''} ${active?'bg-selected':''}" aria-label="${d} ${name}, ${events.length} appointments" aria-pressed="${active}" onclick="bgChooseDay('${iso}')"><strong>${d}</strong>${events.length?`<span class="bg-dots">${events.slice(0,3).map(a=>`<i class="bg-dot bg-${bgType(a)}"></i>`).join('')}</span>`:''}</button>`}).join('');const chosen=S.appts.filter(a=>a.date===bgDay).sort(byTime);return `<section class="bg-calendar bg-led"><div class="bg-calendar-heading"><button class="bg-arrow" onclick="bgMoveMonth(-1)" aria-label="Previous month">‹</button><h2>${name}</h2><button class="bg-arrow" onclick="bgMoveMonth(1)" aria-label="Next month">›</button></div><div class="bg-calendar-grid">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<span class="bg-weekday">${d}</span>`).join('')}${cells}</div><div class="bg-legend"><span><i class="bg-dot bg-health"></i> Health</span><span><i class="bg-dot bg-family"></i> Family</span><span><i class="bg-dot bg-personal"></i> Personal</span><span><i class="bg-dot bg-other"></i> Other</span></div><div class="bg-selected-events"><strong>${new Date(bgDay+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</strong>${chosen.length?chosen.map(a=>`<button class="bg-event-${bgType(a)}" onclick="apptModal('${a.id}')">${esc(a.title)} ${a.time?'· '+fmtTime(a.time):''}</button>`).join(''):'<p>No appointments on this date.</p>'}</div></section>`}
 function vAppts(){
   const up=upcoming(),past=S.appts.filter(a=>daysUntil(a.date)<0).sort((a,b)=>b.date.localeCompare(a.date));
   return `<div class="bg-section-hero"><span>✦ YOUR SCHEDULE</span><h2>Appointments</h2><p>Important dates, beautifully organised.</p></div>${bgCalendar()}<button class="btn" style="width:100%;margin:10px 0" onclick="apptModal(null,bgDay)">➕ Add an appointment</button>
@@ -926,6 +963,6 @@ let lastDay=todayStr();setInterval(()=>{tick();if(todayStr()!==lastDay){lastDay=
 render();tick();
 if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 </script> 
-  <script src="my-day-v11.js?v=blossom-visual-3"></script>
+  <script src="my-day-v11.js?v=blossom-v7"></script>
 </body>
 </html>

@@ -760,7 +760,17 @@ function greeting(){const h=new Date().getHours();return (h<12?'Good morning':h<
 function pillCard(){const ds=todayStr(),entries=(S.pills||[]).slice().sort((a,b)=>a.time.localeCompare(b.time));return `<section class="card bg-pills"><div class="bg-pills-heading"><h2>💊 Pill reminders</h2><button class="btn alt" onclick="pillModal()">+ Add</button></div><p class="meta">Set a time for each reminder. Alerts work while My Day is open; background notifications are not guaranteed.</p>${entries.map(p=>`<div class="bg-pill-row"><button class="chk" onclick="pillToggle('${p.id}')" aria-label="Mark ${esc(p.name)} ${p.doneOn===ds?'not taken':'taken'}">${p.doneOn===ds?'✓':''}</button><div class="bg-pill-info"><strong>${esc(p.name)}</strong><span>${fmtTime(p.time)} · ${p.doneOn===ds?'Marked taken today':'Not marked today'}</span></div><button class="a-cal" onclick="pillModal('${p.id}')">Edit</button></div>`).join('')||'<div class="empty">No pill reminders yet.</div>'}</section>`}
 function pillModal(id){const p=(S.pills||[]).find(x=>x.id===id);openModal(`<h2>${p?'Edit':'Add'} pill reminder</h2><p class="meta">Enter the name and time from your prescribed or agreed routine.</p><form onsubmit="pillSave(event,'${p?p.id:''}')"><label for="pillName">Name</label><input id="pillName" maxlength="90" required value="${esc(p?p.name:'')}" placeholder="e.g. Evening tablet"><label for="pillTime">Reminder time</label><input id="pillTime" type="time" required value="${p?p.time:'09:00'}"><div class="mbtns"><button class="btn" type="submit">Save reminder</button>${p?`<button type="button" class="btn danger" onclick="pillDelete('${p.id}')">Delete</button>`:''}<button type="button" class="btn alt" onclick="closeModal()">Cancel</button></div></form>`)}
 function pillSave(e,id){e.preventDefault();const name=document.getElementById('pillName').value.trim(),time=document.getElementById('pillTime').value;if(!name||!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))return;S.pills=S.pills||[];const p=S.pills.find(x=>x.id===id);if(p){p.name=name;p.time=time}else S.pills.push({id:uid(),name,time,doneOn:''});save();closeModal();render();toast('Pill reminder saved')}
-function pillToggle(id){const p=(S.pills||[]).find(x=>x.id===id);if(!p)return;p.doneOn=p.doneOn===todayStr()?'':todayStr();save();render()}
+
+function pillToggle(id){
+  const p=(S.pills||[]).find(x=>x.id===id);
+  if(!p)return;
+  const taken=p.doneOn!==todayStr();
+  p.doneOn=taken?todayStr():'';
+  save();
+  render();
+  if(taken)celebrate('one',id);
+}
+
 function pillDelete(id){S.pills=(S.pills||[]).filter(x=>x.id!==id);save();closeModal();render();toast('Reminder deleted')}
 /* Blossom Glow: home sticky notes are a compact view of existing notes, never a second store. */
 function homeStickyCard(){

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-  <link rel="stylesheet" href="my-day-v11.css">
+  <link rel="stylesheet" href="my-day-v11.css?v=blossom-visual-3">
 <meta charset="utf-8">
 <title>My Day</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -194,7 +194,29 @@ body.noglass #modal{background:var(--bg)}
 #myday-opening .opening-skip{position:absolute;right:16px;top:max(16px,env(safe-area-inset-top));z-index:1;border:1px solid #e6c8d8;background:#ffffffcc;color:#79516c;border-radius:99px;padding:9px 15px;font:600 13px system-ui;cursor:pointer}
 @media(prefers-reduced-motion:reduce){#myday-opening{transition:none}}
 </style>
-</head>
+<style id="blossom-visual-critical-v3">
+/* Critical visual rules embedded to avoid stale external stylesheet on GitHub Pages. */
+body:not(.dark) .bg-home-hero,body:not(.dark) .bg-section-hero{background:linear-gradient(130deg,#80507d,#b96b9e)!important;color:#fff!important;border:2px solid #dca5cd!important;box-shadow:0 0 16px #dca5cd44!important}
+.bg-home-hero h2,.bg-section-hero h2,.bg-home-hero p,.bg-section-hero p{color:#fff!important}
+body:not(.dark) #app .md131-colour-card[data-tone=rose]{--md-card-bg:#f4c8dd!important;--md-card-edge:#d888b2!important;--md-card-heading:#703f5d!important}
+body:not(.dark) #app .md131-colour-card[data-tone=lavender]{--md-card-bg:#d4c5f2!important;--md-card-edge:#aa93d9!important;--md-card-heading:#534079!important}
+body:not(.dark) #app .md131-colour-card[data-tone=mint]{--md-card-bg:#bce3d5!important;--md-card-edge:#79bca6!important;--md-card-heading:#285c4e!important}
+body:not(.dark) #app .md131-colour-card[data-tone=peach]{--md-card-bg:#f6d3a2!important;--md-card-edge:#dea966!important;--md-card-heading:#74502c!important}
+body:not(.dark) #app .md131-colour-card[data-tone=berry]{--md-card-bg:#f0c2d5!important;--md-card-edge:#d58fab!important;--md-card-heading:#783d5b!important}
+body:not(.dark) #app .bg-verse{background:linear-gradient(130deg,#514080,#7257a6)!important;color:#fff!important;border:2px solid #bda1ed!important}
+body:not(.dark) #app .bg-verse h2,body:not(.dark) #app .bg-verse blockquote,body:not(.dark) #app .bg-verse .meta{color:#fff!important}
+body:not(.dark) #app .bg-home-notes{background:linear-gradient(135deg,#f6d3a2,#fff0d8)!important;border:1.5px solid #dea966!important}
+body:not(.dark) #app .bg-coming-up{background:linear-gradient(135deg,#d4c5f2,#eee4ff)!important;border:1.5px solid #aa93d9!important}
+body:not(.dark) #app .bg-pills{background:linear-gradient(135deg,#f0c2d5,#fbe4ed)!important;border:1.5px solid #d58fab!important}
+body:not(.dark) #app .bg-calendar{background:linear-gradient(145deg,#262a50,#1c2947)!important;color:#fff!important;border:2px solid #a284e4!important}
+#app .bg-calendar-grid{display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;gap:5px!important}
+#app .bg-calendar-heading{display:flex!important;align-items:center!important;justify-content:space-between!important}
+#app .bg-calendar .bg-day{background:#222b4b!important;color:#fff!important;min-height:44px!important;border:1px solid #434a76!important;border-radius:10px!important}
+#app .bg-calendar .bg-day.bg-health{background:#9e437a!important}#app .bg-calendar .bg-day.bg-family{background:#6044ae!important}#app .bg-calendar .bg-day.bg-personal{background:#147d78!important}#app .bg-calendar .bg-day.bg-selected{border:2px solid #ffd78c!important}
+#app .bg-calendar h2,#app .bg-calendar .bg-weekday,#app .bg-calendar .bg-legend{color:#fff!important}
+#app{padding-bottom:max(150px,calc(120px + env(safe-area-inset-bottom)))!important}
+@media(prefers-reduced-motion:reduce){.bg-home-hero,.bg-section-hero,.bg-calendar{animation:none!important}}
+</style></head>
 <body data-size="m">
 <div id="myday-opening" aria-label="My Day opening animation">
   <video id="myday-opening-video" autoplay muted playsinline preload="auto" aria-hidden="true"><source src="myday-opening.mp4" type="video/mp4"></video>
@@ -847,6 +869,6 @@ let lastDay=todayStr();setInterval(()=>{tick();if(todayStr()!==lastDay){lastDay=
 render();tick();
 if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 </script> 
-  <script src="my-day-v11.js"></script>
+  <script src="my-day-v11.js?v=blossom-visual-3"></script>
 </body>
 </html>

@@ -1,0 +1,115 @@
+/* My Day v1.1 additive styling: preserves existing themes */
+.md11-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+.md11-sticky{min-height:110px;border-radius:5px 5px 16px 5px;padding:13px;color:#483949;box-shadow:2px 5px 10px #49344222;white-space:pre-wrap;overflow-wrap:anywhere;transform:rotate(-1deg);transition:transform .2s,opacity .2s}
+.md11-sticky:nth-child(even){transform:rotate(1deg)}
+.md11-sticky:active{transform:scale(.97)}
+.md11-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.md11-actions button{border:0;border-radius:10px;padding:7px 10px;background:#ffffffb8;color:#463846;font-weight:700}
+.md11-verse{margin:12px 0;padding:10px 15px;border-left:4px solid var(--pri);font-size:1.1em;line-height:1.55}
+.md11-verse .meta{margin-top:8px}
+#md11-fab{position:fixed;right:16px;bottom:calc(83px + env(safe-area-inset-bottom));z-index:8;background:var(--pri);color:white;border:0;border-radius:50px;padding:13px 17px;font-weight:800;box-shadow:0 5px 20px #54263b55}
+.md11-rise{animation:md11-rise .34s ease-out both}
+@keyframes md11-rise{from{opacity:.4;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.md11-rise{animation:none!important}.md11-sticky{transition:none!important}}
+@media(max-width:350px){.md11-grid{grid-template-columns:1fr}}
+/* v1.1 QA: note completion feedback, lightweight touch transitions */
+.md11-sticky button:active,.md11-actions button:active{transform:scale(.96)}
+.md11-sticky button{transition:transform .16s ease}
+.md11-verse{border-left:3px solid var(--pri);padding:8px 12px;margin:12px 0;line-height:1.55}
+.md11-sticky{animation:md11-rise .34s ease-out both}
+@media(prefers-reduced-motion:reduce){.md11-sticky,.md11-sticky button{animation:none!important;transition:none!important}}
+/* Final review: note completion motion; respects reduced motion */
+.md11-completing{position:relative;animation:md11-finish .38s ease-in forwards!important}
+.md11-completing:after{content:'✓ ✨';position:absolute;inset:0;display:grid;place-items:center;font-size:2rem;font-weight:800;color:#37523c;pointer-events:none;animation:md11-check .38s ease-out both}
+@keyframes md11-finish{0%{opacity:1;transform:scale(1)}65%{opacity:1;transform:scale(1.04)}100%{opacity:0;transform:scale(.94)}}
+@keyframes md11-check{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){.md11-completing,.md11-completing:after{animation:none!important}}
+
+/* My Day v1.3 — calmer card edge. Replaces the animated LED glow: static, no filters,
+   no masks, no per-card animation, so tiles stay painted while scrolling. */
+:root{--md12-edge:rgba(224,103,138,.28)}
+body.dark{--md12-edge:rgba(255,130,193,.3)}
+#app .card{box-shadow:var(--shadow),0 0 0 1px var(--md12-edge)}
+#app .card::before,#app .card::after{content:none!important;animation:none!important}
+
+/* v1.3 Android performance: static blossom-pink/lavender edge; no tile repaint animation. */
+:root{--md13-lavender:rgba(178,148,220,.20)}
+body.dark{--md13-lavender:rgba(205,168,245,.22)}
+#app .card{position:relative;background:var(--card);border:1px solid var(--md12-edge);box-shadow:0 2px 9px rgba(120,70,90,.09),0 0 0 1px var(--md13-lavender);animation:none!important;filter:none!important;opacity:1!important;visibility:visible!important}
+#app.enter>*{animation:none!important;opacity:1!important;transform:none!important}
+.md11-sticky{animation:none!important}
+body::before{animation:none!important}
+
+/* v1.3.1: Android edge-to-edge surface and restrained static accents */
+html,body{min-height:100%;background:var(--bg)}
+body{overflow-x:hidden}
+body::before{inset:0;animation:none!important}
+header.scrolled{border-bottom-color:transparent!important;box-shadow:none!important}
+.tabs{border:0!important;box-shadow:0 5px 18px rgba(120,70,90,.12)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+#app .card{box-shadow:0 2px 9px rgba(120,70,90,.08)!important;border:1px solid var(--line)!important}
+#app .card.md131-feature{border:1px solid rgba(224,103,138,.46)!important;box-shadow:0 3px 12px rgba(224,103,138,.12),0 0 0 1px rgba(178,148,220,.16)!important}
+.md131-moods{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin:12px 0}
+.md131-mood{border:1px solid var(--line);border-radius:13px;background:var(--card);color:var(--ink);padding:9px 2px;font:inherit;font-size:.67em;min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px}
+.md131-mood span{font-size:1.8em}.md131-mood.selected{border-color:var(--pri);background:var(--pri2)}
+.md131-check{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.md131-check:last-child{border-bottom:0}.md131-check input{width:21px;height:21px;flex:none;accent-color:var(--pri)}
+@media(prefers-reduced-motion:reduce){.md131-mood{transition:none!important}}
+
+/* v1.3.1 Me Time: colourful, lightweight, short-lived interactions */
+.md131-hero{background:linear-gradient(115deg,#52346e,#a04d83 70%,#bd738d);border-radius:20px;padding:20px;color:#fff;margin-bottom:14px}
+.md131-hero h2{font-size:1.65rem;margin:5px 0}.md131-hero p{margin:0;color:#fff0fa}.md131-eyebrow{font-size:.68rem;letter-spacing:.13em;font-weight:800;color:#ffe0f3}
+.md131-mood-card{border-color:#d998c3!important}.md131-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:12px 0 17px}
+.md131-tile{border:0;border-radius:18px;min-height:135px;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;padding:15px;color:#fff;text-align:left;gap:5px;box-shadow:0 3px 12px #2c15321a;cursor:pointer;transition:transform .16s ease}
+.md131-tile:active{transform:scale(.97)}.md131-tile span{font-size:2rem;margin-bottom:auto}.md131-tile strong{font-size:1rem}.md131-tile small{color:#fff4fa;font-size:.77rem}
+.md131-tile.purple,.md131-panel.purple{background:#6750a4}.md131-tile.pink,.md131-panel.pink{background:#a64c80}.md131-tile.green,.md131-panel.green{background:#287c6e}.md131-tile.orange,.md131-panel.orange{background:#a76b39}
+.md131-panel{color:white!important;border:0!important;box-shadow:0 4px 15px #26142820!important}.md131-panel h2,.md131-panel h3,.md131-panel label{color:white}.md131-panel p{color:#fff0f6}.md131-panel input{background:#fff;color:#302436;border-radius:10px}.md131-back{background:transparent;border:0;color:var(--pri);font-weight:800;padding:9px 0 16px}
+.md131-action{margin:12px 0;background:#fff!important;color:#5d3656!important;width:100%}.md131-entry{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#ffffff22;padding:11px;border-radius:12px;margin-top:8px;overflow-wrap:anywhere}.md131-entry span{flex:1}.md131-entry button{background:#ffffff26;border:0;border-radius:8px;color:white;font-size:1.3rem;min-width:34px;min-height:34px}
+.md131-categories{display:flex;gap:5px;flex-wrap:wrap;margin:12px 0}.md131-categories button{border:1px solid #ffffff88;background:#ffffff16;color:white;border-radius:18px;padding:8px;font-weight:700}.md131-categories button.active{background:#fff;color:#723956}.md131-templates{display:grid;gap:7px;margin:12px 0 18px}.md131-templates button{background:#ffffff25;border:1px solid #ffffff3d;border-radius:11px;color:white;text-align:left;padding:12px;font:inherit}
+.md131-garden{min-height:200px;background:linear-gradient(#74b8aa,#a9d8ad 68%,#477b59 69%);border-radius:17px;padding:16px;display:flex;align-content:flex-end;align-items:flex-end;justify-content:center;flex-wrap:wrap;gap:8px}.md131-blossom{font-size:2rem;animation:md131-bloom .48s both}.md131-seed{color:#244d3d}.md131-total{text-align:center;font-weight:800}.md131-surprise{border-radius:16px;background:#ffffff28;min-height:150px;text-align:center;padding:22px;font-size:2rem}.md131-surprise p{font-size:1rem}.md131-flower{position:fixed;z-index:9999;pointer-events:none;font-size:1.6rem;animation:md131-float 1.1s ease-out forwards}
+@keyframes md131-float{from{opacity:0;transform:translateY(15px) scale(.7)}30%{opacity:1}to{opacity:0;transform:translateY(-70px) scale(1.2)}}@keyframes md131-bloom{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){.md131-flower{display:none}.md131-blossom,.md131-tile{animation:none!important;transition:none!important}}
+
+/* v1.3.1 Gentle Check-In: no continuous animations */
+.md131-needs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
+.md131-need{font:inherit;font-size:.84rem;font-weight:650;min-height:44px;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);text-align:left}
+.md131-need.selected{border-color:#d675ad;background:var(--pri2);box-shadow:inset 0 0 0 1px #d675ad}
+.md131-kind-note{padding:12px;border-radius:12px;background:var(--pri2);color:var(--ink);line-height:1.5}
+
+
+/* v1.3.1 colour system — a consistent playful identity without costly glass effects.
+   Readability: content cards get gentle tinted surfaces; short interactive tiles stay bold.
+   These styles are presentation-only; they do not modify persisted user data. */
+:root{
+  --md-rose:#ac4c80;--md-lavender:#7159a8;--md-mint:#27836f;
+  --md-peach:#b3733f;--md-berry:#94527f;--md-honey:#a07733;
+}
+#app .md131-colour-card{position:relative;overflow:visible;border-radius:19px!important;border:1px solid var(--md-card-edge)!important;background:var(--md-card-bg)!important;box-shadow:0 3px 12px rgba(55,30,50,.065)!important}
+#app .md131-colour-card h2{color:var(--md-card-heading);line-height:1.35}
+#app .md131-colour-card h2:before{content:'';width:5px;min-width:5px;height:1.25em;background:var(--md-card-heading);border-radius:999px;align-self:center}
+#app .md131-colour-card[data-tone=rose]{--md-card-heading:var(--md-rose);--md-card-bg:#fff0f6;--md-card-edge:#f2c7dc}
+#app .md131-colour-card[data-tone=lavender]{--md-card-heading:var(--md-lavender);--md-card-bg:#f3efff;--md-card-edge:#d9ccf5}
+#app .md131-colour-card[data-tone=mint]{--md-card-heading:var(--md-mint);--md-card-bg:#ebf8f1;--md-card-edge:#bde6d5}
+#app .md131-colour-card[data-tone=peach]{--md-card-heading:var(--md-peach);--md-card-bg:#fff2e7;--md-card-edge:#f0d4b6}
+#app .md131-colour-card[data-tone=berry]{--md-card-heading:var(--md-berry);--md-card-bg:#f9edfa;--md-card-edge:#e6c7e6}
+#app .md131-colour-card[data-tone=honey]{--md-card-heading:var(--md-honey);--md-card-bg:#fff8e5;--md-card-edge:#f2dfaa}
+body.dark #app .md131-colour-card[data-tone=rose]{--md-card-heading:#ffc2de;--md-card-bg:#392332;--md-card-edge:#6a3c57}
+body.dark #app .md131-colour-card[data-tone=lavender]{--md-card-heading:#d4bdff;--md-card-bg:#302943;--md-card-edge:#55426e}
+body.dark #app .md131-colour-card[data-tone=mint]{--md-card-heading:#9be0c4;--md-card-bg:#233a33;--md-card-edge:#3d6959}
+body.dark #app .md131-colour-card[data-tone=peach]{--md-card-heading:#f9caa1;--md-card-bg:#3a2c26;--md-card-edge:#6e4f3b}
+body.dark #app .md131-colour-card[data-tone=berry]{--md-card-heading:#f0c2e8;--md-card-bg:#35293c;--md-card-edge:#61476b}
+body.dark #app .md131-colour-card[data-tone=honey]{--md-card-heading:#f0d693;--md-card-bg:#393321;--md-card-edge:#685939}
+/* Pop of colour for nav; no continuous animation or blur. */
+.tabs button.on{box-shadow:none!important;color:var(--md-rose)!important;background:#f7dce9!important}
+body[data-section=lists] .tabs button.on{color:#865023!important;background:#f6dfc7!important}
+body[data-section=appts] .tabs button.on{color:#5d438e!important;background:#e6dcfb!important}
+body[data-section=me] .tabs button.on{color:#8b376e!important;background:#f5d4e7!important}
+body.dark .tabs button.on{color:#ffe1f3!important;background:#69405a!important}
+body.dark[data-section=lists] .tabs button.on{background:#704a34!important}
+body.dark[data-section=appts] .tabs button.on{background:#53426e!important}
+/* Major Me Time tiles retain saturated colours; no animated LED on long lists. */
+.md131-tile{box-shadow:inset 0 1px 0 rgba(255,255,255,.24),0 4px 12px rgba(55,30,55,.13)}
+.md131-tile:focus-visible,.md131-need:focus-visible{outline:3px solid #ffcdf0;outline-offset:2px}
+/* Remove frame-like pink lines above/below the actual screen surface. */
+body::before{display:none!important}
+header.scrolled{border-bottom:0!important}
+@media(prefers-reduced-motion:reduce){.md131-tile{transition:none!important}}

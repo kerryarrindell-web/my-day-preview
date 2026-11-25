@@ -1,0 +1,565 @@
+
+const $=s=>document.querySelector(s);
+const uid=()=>Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-3);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const todayStr=()=>ymd(new Date());
+const pd=s=>{const a=s.split('-').map(Number);return new Date(a[0],a[1]-1,a[2])};
+const addDays=(s,n)=>{const d=pd(s);d.setDate(d.getDate()+n);return ymd(d)};
+const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
+
+const DEF=()=>({lists:[{id:'groc',name:'Groceries',emoji:'🛒',items:[]},{id:'baby',name:'Baby',emoji:'🍼',items:[]},{id:'todo',name:'To do',emoji:'✅',items:[]}],tasks:[],appts:[],notes:[],name:'',custom:[],settings:{size:'m',dark:false,notify:false,cal:'https://calendar.google.com/',babyUrl:'',moti:true,cheer:true},wins:{},notified:{},snooze:{},routines:[{id:'am',name:'Morning',emoji:'🌅',items:[{id:'am1',t:'Take vitamins'},{id:'am2',t:'Breakfast'},{id:'am3',t:'Check today’s list'}]},{id:'pm',name:'Bedtime',emoji:'🌙',items:[{id:'pm1',t:'Lock up'},{id:'pm2',t:'Charge phone'},{id:'pm3',t:'Look at tomorrow'}]}],rlog:{},meals:{}});
+const KEY='myday-v1';
+let S=DEF(),mem=null;
+let animTab=false,lastAdd=null,motiOff=0,motiHelp=false,noteQ='',openRt=null,pendingImg='',editImg='',tab='today',curList='groc',showForm=false,showPast=false,showDone=false,openCat=null,confirmDel=false,noteColor='#fff3a8',lastSnap=null,alerts=[],installEvt=null,syncMsg='Saved on this phone';
+
+/* ---------- storage ---------- */
+function norm(o){const d=DEF();const n=Object.assign(d,o||{});n.settings=Object.assign(DEF().settings,(o&&o.settings)||{});
+  n.notified=n.notified||{};n.snooze=n.snooze||{};
+  const cut=Date.now()-4*864e5;for(const k in n.notified)if(n.notified[k]<cut)delete n.notified[k];
+  const old=addDays(todayStr(),-45);
+  n.tasks=n.tasks.filter(t=>!(t.done&&!t.rep&&t.date<old));
+  n.wins=n.wins||{};for(const k in n.wins)if(k<old)delete n.wins[k];
+  n.rlog=n.rlog||{};n.meals=n.meals||{};n.routines=n.routines||DEF().routines;
+  for(const k in n.rlog)if(k<old)delete n.rlog[k];
+  const oldM=addDays(todayStr(),-14);for(const k in n.meals)if(k<oldM)delete n.meals[k];
+  n.tasks.forEach(t=>{if(t.doneOn)for(const k in t.doneOn)if(k<old)delete t.doneOn[k]});
+  return n}
+function save(){const j=JSON.stringify(S);mem=j;try{localStorage.setItem(KEY,j);syncMsg='Saved on this phone'}catch(e){syncMsg='Not saved — phone storage unavailable. Export a backup now.';console.warn('My Day: local storage write failed',e)}}
+(function(){let j=null;try{j=localStorage.getItem(KEY)}catch(e){}if(j){try{S=norm(JSON.parse(j))}catch(e){}}
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}})();
+function snap(){lastSnap=JSON.stringify(S)}
+function undo(){if(lastSnap){S=norm(JSON.parse(lastSnap));lastSnap=null;$('#toast').hidden=true;save();render()}}
+let toastT=null;
+function toast(m,u){const t=$('#toast');t.hidden=false;t.innerHTML='<span>'+esc(m)+'</span>'+(u?'<button onclick="undo()">Undo</button>':'');clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true},u?6000:2500)}
+
+/* ---------- speech ---------- */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let recog=null;
+function micBtn(t){return SR?`<button class="mic" id="mic-${t}" onclick="mic('${t}')" aria-label="Speak">🎤</button>`:''}
+function mic(id){
+  const el=document.getElementById(id),b=document.getElementById('mic-'+id);if(!SR||!el)return;
+  if(recog){try{recog.stop()}catch(e){}return}
+  recog=new SR();recog.lang='en-GB';recog.interimResults=false;b.classList.add('on');
+  recog.onresult=ev=>{el.value=(el.value+' '+ev.results[0][0].transcript).trim();el.focus()};
+  recog.onerror=()=>toast('Couldn’t hear that. Try again.');
+  recog.onend=()=>{recog=null;b.classList.remove('on')};
+  try{recog.start()}catch(e){recog=null;b.classList.remove('on')}
+}
+
+/* ---------- calendar links ---------- */
+function gcal({title,date,time,dur=60,place='',notes=''}){
+  let dates;
+  if(time){const [h,m]=time.split(':').map(Number);const s=pd(date);s.setHours(h,m);const e=new Date(s.getTime()+dur*60000);
+    const f=d=>d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'T'+pad(d.getHours())+pad(d.getMinutes())+'00';dates=f(s)+'/'+f(e)}
+  else{const s=pd(date),e=new Date(s.getTime()+864e5);const f=d=>d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate());dates=f(s)+'/'+f(e)}
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(title)+'&dates='+dates+'&details='+encodeURIComponent(notes)+'&location='+encodeURIComponent(place)}
+function icsEsc(s){return String(s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n')}
+function icsFor(a){
+  const dur=a.dur||60,L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//My Day//EN','BEGIN:VEVENT','UID:'+a.id+'@myday','DTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').slice(0,15)+'Z'];
+  if(a.time){const s=pd(a.date),p=a.time.split(':');s.setHours(+p[0],+p[1]);const e=new Date(s.getTime()+dur*60000);
+    const f=d=>d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'T'+pad(d.getHours())+pad(d.getMinutes())+'00';L.push('DTSTART:'+f(s),'DTEND:'+f(e))}
+  else L.push('DTSTART;VALUE=DATE:'+a.date.replace(/-/g,''),'DTEND;VALUE=DATE:'+addDays(a.date,1).replace(/-/g,''));
+  L.push('SUMMARY:'+icsEsc(a.title));if(a.place)L.push('LOCATION:'+icsEsc(a.place));if(a.notes)L.push('DESCRIPTION:'+icsEsc(a.notes));
+  const r=a.remind==null?60:a.remind;if(r>=0&&a.time)L.push('BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:Reminder','TRIGGER:-PT'+r+'M','END:VALARM');
+  L.push('END:VEVENT','END:VCALENDAR');return L.join('\r\n')}
+function download(name,text,type){try{const b=new Blob([text],{type:type||'text/plain'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);return true}catch(e){return false}}
+function copyText(t,msg){const ok=()=>toast(msg||'Copied');const fb=()=>{try{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();ok()}catch(e){toast('Couldn’t copy')}};try{navigator.clipboard.writeText(t).then(ok,fb)}catch(e){fb()}}
+
+/* ---------- date helpers ---------- */
+function fmtDate(d){return pd(d).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
+function fmtTime(t){if(!t)return'';const [h,m]=t.split(':').map(Number);return (h%12||12)+':'+pad(m)+(h<12?' am':' pm')}
+function daysUntil(d){return Math.round((pd(d)-pd(todayStr()))/864e5)}
+function when(d){const n=daysUntil(d);return n===0?'<span class="badge">Today</span>':n===1?'<span class="badge soon">Tomorrow</span>':n<0?'':n<=7?`<span class="badge soon">In ${n} days</span>`:''}
+function upcoming(){return S.appts.filter(a=>daysUntil(a.date)>=0).sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')))}
+const REP={'':'Doesn’t repeat',daily:'Every day',weekdays:'Weekdays only',weekly:'Every week',monthly:'Every month'};
+function occursOn(t,ds){
+  if(!t.rep)return t.date===ds;
+  const s=t.date;if(ds<s)return false;const d=pd(ds),sd=pd(s);
+  if(t.rep==='daily')return true;
+  if(t.rep==='weekdays'){const w=d.getDay();return w>0&&w<6}
+  if(t.rep==='weekly')return d.getDay()===sd.getDay();
+  if(t.rep==='monthly'){const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();return d.getDate()===Math.min(sd.getDate(),last)}
+  return false}
+const isDone=(t,ds)=>t.rep?!!(t.doneOn&&t.doneOn[ds]):!!t.done;
+const byTime=(a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99');
+function tasksFor(ds){
+  return S.tasks.filter(t=>t.rep?occursOn(t,ds):(t.date===ds||(t.date<ds&&!t.done))).sort((a,b)=>(isDone(a,ds)-isDone(b,ds))||byTime(a,b))}
+
+/* ---------- quick-add parsing ("Call GP at 3pm", "Bins tomorrow") ---------- */
+const DAYN=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+function parseQuick(raw){
+  let s=' '+raw.trim()+' ',date=null,time=null,rep='',m;
+  if((m=s.match(/\s(every ?day|daily)\s/i))){rep='daily';s=s.replace(m[0],' ')}
+  else if((m=s.match(/\s(every week|weekly)\s/i))){rep='weekly';s=s.replace(m[0],' ')}
+  else if((m=s.match(/\s(every month|monthly)\s/i))){rep='monthly';s=s.replace(m[0],' ')}
+  else if((m=s.match(/\s(on )?weekdays\s/i))){rep='weekdays';s=s.replace(m[0],' ')}
+  if((m=s.match(/\stomorrow\s/i))){date=addDays(todayStr(),1);s=s.replace(m[0],' ')}
+  else if((m=s.match(/\stoday\s/i))){date=todayStr();s=s.replace(m[0],' ')}
+  else if((m=s.match(/\s(?:on |next )?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s/i))){
+    const want=DAYN.indexOf(m[1].toLowerCase());let d=pd(todayStr());do{d.setDate(d.getDate()+1)}while(d.getDay()!==want);date=ymd(d);s=s.replace(m[0],' ')}
+  if((m=s.match(/\s(?:at )?(\d{1,2})(?::(\d{2}))?\s?(am|pm)\s/i))&&+m[1]<=12){let h=+m[1]%12;if(m[3].toLowerCase()==='pm')h+=12;time=pad(h)+':'+(m[2]||'00');s=s.replace(m[0],' ')}
+  else if((m=s.match(/\sat (\d{1,2}):(\d{2})\s/i))&&+m[1]<24){time=pad(+m[1])+':'+m[2];s=s.replace(m[0],' ')}
+  let text=s.replace(/\s+/g,' ').trim();if(!text)text=raw.trim();
+  return{t:cap(text),date,time,rep}}
+
+/* ---------- task actions ---------- */
+function toggleTask(id,ds){const t=S.tasks.find(x=>x.id===id);if(!t)return;
+  if(t.rep){t.doneOn=t.doneOn||{};if(t.doneOn[ds])delete t.doneOn[ds];else t.doneOn[ds]=1}else t.done=!t.done;
+  const now=isDone(t,ds);winAdd(now?1:-1);save();finish(id,now);
+  if(now){const rest=tasksFor(ds).filter(x=>!isDone(x,ds)).length;celebrate(rest===0&&ds===todayStr()?'all':'one',id)}}
+function addTask(){
+  const raw=$('#nt').value.trim();if(!raw)return;
+  const p=parseQuick(raw);
+  const d=p.date||($('#ntd')&&$('#ntd').value)||todayStr(),tm=(($('#ntt')&&$('#ntt').value)||p.time||''),rep=p.rep||($('#ntr')&&$('#ntr').value)||'';
+  const nid=uid();S.tasks.push({id:nid,t:p.t,done:false,doneOn:{},date:d,time:tm,rep});lastAdd=nid;save();$('#nt').value='';['ntd','ntt','ntr'].forEach(i=>{const e=$('#'+i);if(e)e.value=i==='ntd'?e.defaultValue:''});render();setTimeout(()=>{const e=$('#nt');if(e)e.focus()},0)}
+function clearDoneTasks(){snap();const td=todayStr();S.tasks=S.tasks.filter(t=>t.rep||!t.done);S.tasks.forEach(t=>{if(t.rep&&t.doneOn)delete t.doneOn[td]});save();render();toast('Cleared',true)}
+function moveToday(id){const t=S.tasks.find(x=>x.id===id);if(t){t.date=todayStr();save();render();toast('Moved to today')}}
+
+/* ---------- list actions ---------- */
+const curL=()=>S.lists.find(x=>x.id===curList)||S.lists[0];
+function toggleItem(id){const l=curL(),i=l.items.find(x=>x.id===id);if(i){i.done=!i.done;winAdd(i.done?1:-1);save();finish(id,i.done);
+  if(i.done)celebrate(l.items.every(x=>x.done)?(l.id==='groc'?'shop':'list'):'one',id)}}
+function delItem(id){snap();const l=curL();l.items=l.items.filter(x=>x.id!==id);save();render();toast('Removed',true)}
+function addItem(){const v=$('#ni').value.trim();if(!v)return;const l=curL();
+  v.split(/,|\band\b|\n/i).map(s=>s.trim()).filter(Boolean).forEach(s=>{const t=cap(s);if(!l.items.some(i=>i.t.toLowerCase()===t.toLowerCase()&&!i.done))l.items.push({id:uid(),t,done:false});
+    if(l.id==='groc'&&!CAT.some(c=>c[2].some(n=>n.toLowerCase()===t.toLowerCase()))&&!(S.custom||[]).some(n=>n.toLowerCase()===t.toLowerCase())){S.custom=S.custom||[];S.custom.push(t)}});
+  lastAdd=l.items.length?l.items[l.items.length-1].id:null;save();render();setTimeout(()=>{const e=$('#ni');if(e)e.focus()},0)}
+function clearDoneItems(){snap();const l=curL();l.items=l.items.filter(i=>!i.done);save();render();toast('Removed ticked items',true)}
+function uncheckAll(){curL().items.forEach(i=>i.done=false);save();render()}
+function newListGo(){const v=$('#nl').value.trim();if(!v)return;const id=uid();S.lists.push({id,name:v,emoji:'📝',items:[]});curList=id;save();render()}
+function delList(){if(S.lists.length<2)return;if(!confirmDel){confirmDel=true;render();return}snap();S.lists=S.lists.filter(x=>x.id!==curList);curList=S.lists[0].id;confirmDel=false;save();render();toast('List deleted',true)}
+function renameList(){const l=curL();openModal(`<h2>Rename list</h2><form onsubmit="doRename(event)"><input id="mrn" value="${esc(l.name)}" required><div class="mbtns"><button class="btn">Save</button><button type="button" class="btn alt" onclick="closeModal()">Cancel</button></div></form>`)}
+function doRename(e){e.preventDefault();const v=$('#mrn').value.trim();if(v){curL().name=v;save();closeModal();render()}}
+function shareText(l){const o=l.items.filter(i=>!i.done);return l.name+':\n'+o.map(i=>'- '+i.t).join('\n')}
+function shareList(){const t=shareText(curL());if(navigator.share){navigator.share({text:t}).catch(()=>{})}else copyText(t,'List copied. Paste it into a message.')}
+const CAT=[
+['🥛','Dairy & Eggs',['Milk','Semi-skimmed milk','Whole milk','Oat milk','Butter','Spread','Cheddar cheese','Grated cheese','Mozzarella','Cream cheese','Yoghurt','Greek yoghurt','Fromage frais','Double cream','Single cream','Eggs','Custard']],
+['🥦','Fruit & Veg',['Bananas','Apples','Oranges','Satsumas','Grapes','Strawberries','Blueberries','Pears','Lemons','Limes','Avocados','Potatoes','Sweet potatoes','Carrots','Onions','Red onions','Garlic','Tomatoes','Cherry tomatoes','Cucumber','Lettuce','Salad bag','Spinach','Broccoli','Cauliflower','Peppers','Mushrooms','Courgettes','Sweetcorn','Peas','Cabbage','Leeks','Celery','Ginger']],
+['🍗','Meat & Fish',['Chicken breast','Chicken thighs','Whole chicken','Mince beef','Sausages','Bacon','Gammon','Ham','Lamb','Pork chops','Steak','Turkey','Salmon','Cod','Fish fingers','Prawns','Tuna','Sardines']],
+['🍞','Bakery & Bread',['Bread','Wholemeal bread','Rolls','Wraps','Bagels','Crumpets','Pitta bread','Naan bread','Croissants','Muffins','Hot cross buns']],
+['🍝','Cupboard',['Pasta','Rice','Noodles','Cereal','Porridge oats','Flour','Sugar','Baked beans','Chopped tomatoes','Tinned tuna','Tinned soup','Tinned sweetcorn','Pasta sauce','Cooking sauce','Stock cubes','Gravy','Peanut butter','Jam','Honey','Marmite','Olive oil','Vegetable oil','Salt','Pepper','Herbs & spices','Soy sauce','Ketchup','Mayonnaise','Brown sauce','Mustard','Lentils','Chickpeas','Tomato puree']],
+['❄️','Frozen',['Frozen peas','Frozen veg','Frozen chips','Oven chips','Frozen pizza','Ice cream','Frozen fruit','Fish fingers (frozen)','Chicken nuggets','Frozen berries','Ice lollies']],
+['🍪','Snacks & Treats',['Biscuits','Chocolate','Crisps','Popcorn','Cereal bars','Nuts','Rice cakes','Cake','Sweets','Dried fruit','Breadsticks']],
+['☕','Drinks',['Tea bags','Coffee','Hot chocolate','Squash','Orange juice','Apple juice','Fizzy drinks','Sparkling water','Still water','Wine','Beer']],
+['🧴','Toiletries & Health',['Toothpaste','Toothbrush','Shampoo','Conditioner','Shower gel','Soap','Deodorant','Razors','Cotton pads','Cotton buds','Sanitary products','Moisturiser','Hand cream','Suncream','Paracetamol','Plasters','Tissues','Toilet roll','Vitamins']],
+['🧽','Household',['Washing-up liquid','Dishwasher tablets','Laundry detergent','Fabric softener','Bleach','Kitchen roll','Bin bags','Sponges','Cleaning spray','Toilet cleaner','Air freshener','Foil','Cling film','Baking paper','Sandwich bags','Batteries','Light bulbs','Matches']],
+['🍼','Baby',['Nappies','Baby wipes','Nappy bags','Nappy cream','Baby milk (formula)','Baby food pouches','Baby cereal','Baby shampoo','Baby lotion','Dummies','Muslin cloths','Baby vests','Breast pads','Bottle cleaner','Teething gel']],
+['🐾','Pets',['Dog food','Cat food','Cat litter','Pet treats']]
+];
+function qa(n){const l=curL();const f=l.items.find(i=>i.t.toLowerCase()===n.toLowerCase());
+  if(f){if(f.done)f.done=false;else l.items=l.items.filter(i=>i!==f)}else l.items.push({id:uid(),t:n,done:false});save();render()}
+function toggleCat(i){openCat=openCat===i?null:i;render()}
+function quickCard(l){
+  const have=new Set(l.items.filter(i=>!i.done).map(i=>i.t.toLowerCase()));
+  const cats=CAT.concat(S.custom&&S.custom.length?[['⭐','My regulars',S.custom]]:[]);
+  return `<div class="card"><h2>⚡ Quick add</h2><div class="meta" style="margin-bottom:8px">Tap a category, then tap items to add them. Tap again to take off.</div>
+  ${cats.map((c,i)=>{const open=openCat===i;return `<div style="border-top:1px solid var(--line)"><button onclick="toggleCat(${i})" style="width:100%;text-align:left;background:none;border:0;padding:13px 4px;font-weight:800;font-size:1em;display:flex;justify-content:space-between"><span>${c[0]} ${c[1]}</span><span class="meta">${open?'▲':'▼'}</span></button>
+  ${open?`<div style="display:flex;flex-wrap:wrap;gap:8px;padding:0 0 14px">${c[2].map(n=>`<button class="chip ${have.has(n.toLowerCase())?'got':''}" data-n="${esc(n)}" onclick="qa(this.dataset.n)">${have.has(n.toLowerCase())?'✓ ':''}${esc(n)}</button>`).join('')}</div>`:''}</div>`}).join('')}</div>`}
+
+/* ---------- celebrations ---------- */
+const reduceMotion=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+const autoNoGlass=(window.matchMedia&&matchMedia('(prefers-reduced-transparency: reduce)').matches)||!(window.CSS&&CSS.supports&&(CSS.supports('backdrop-filter','blur(1px)')||CSS.supports('-webkit-backdrop-filter','blur(1px)')));
+let lastClick={x:innerWidth/2,y:innerHeight/3},lastCheer='',cheerT=null;
+document.addEventListener('click',e=>{if(e.clientX||e.clientY)lastClick={x:e.clientX,y:e.clientY}},true);
+function winAdd(n){const td=todayStr();S.wins[td]=Math.max(0,(S.wins[td]||0)+n)}
+const winCount=()=>S.wins[todayStr()]||0;
+function pickMsg(a){let m;do{m=a[Math.floor(Math.random()*a.length)]}while(a.length>1&&m===lastCheer);lastCheer=m;return m}
+function cheerMsg(kind){
+  const h=new Date().getHours(),n=winCount();
+  if(kind==='all')return 'You did everything on today’s list! 🎉 Great job today.';
+  if(kind==='routine')return 'Routine complete! 🎉 Great job.';
+  if(kind==='shop')return 'Everything ticked off! 🛒✨ Great job.';
+  if(kind==='list')return 'List complete! 🎉 Great job.';
+  if([3,5,8,10,15,20].includes(n))return n+' things done today! 🌟 Great job today.';
+  const pool=h<12?['Great start to the day! 🌅','One down, you’re off and running ✨','Lovely, a great way to start the day 🌸']
+    :h<18?['Great job, keep it going! 💪','Nicely done, that’s another one ✨','Look at you go! 🌟','Well done, you’re doing brilliantly 🌸']
+    :['Great job today! 🌙','Well done, you’ve earned a rest 💛','Lovely, you’ve done so much today 🌿','Great job today, be proud of yourself ✨'];
+  return pickMsg(pool);
+}
+function burst(x,y,n,spread){
+  if(reduceMotion)return;
+  const cols=['#e0678a','#6fb08f','#f2b84b','#7fb6e8','#ffd1dc'];
+  for(let i=0;i<n;i++){const s=document.createElement('span');s.className='cf';const a=Math.random()*Math.PI*2,d=(spread||70)*(.45+Math.random());
+    s.style.cssText=`left:${x}px;top:${y}px;background:${cols[i%cols.length]};--dx:${(Math.cos(a)*d).toFixed(0)}px;--dy:${(Math.sin(a)*d-30).toFixed(0)}px;--r:${Math.floor(Math.random()*360)}deg`;
+    document.body.appendChild(s);setTimeout(()=>s.remove(),950)}
+}
+let renderT=null;
+function finish(id,ticked){
+  clearTimeout(renderT);
+  const b=ticked&&id&&S.settings.cheer!==false&&!reduceMotion&&document.querySelector('[data-pop="'+id+'"]');
+  if(b){b.classList.add('pop');b.textContent='✓';const r=b.closest('.row');if(r)r.classList.add('flash');renderT=setTimeout(render,420)}else render()}
+function celebrate(kind,id){
+  if(S.settings.cheer===false)return;
+  const big=kind!=='one';
+  burst(lastClick.x,lastClick.y,big?22:12,big?110:60);
+  if(big)burst(innerWidth/2,innerHeight/3,32,170);
+  try{if(navigator.vibrate)navigator.vibrate(big?[30,40,30]:15)}catch(e){}
+  const c=$('#cheer');c.innerHTML='<span class="p2'+(big?' big':'')+'">'+esc(cheerMsg(kind))+'</span>';
+  clearTimeout(cheerT);cheerT=setTimeout(()=>{c.innerHTML=''},big?3600:2600);
+}
+function winsLine(){
+  const n=winCount();if(!n||S.settings.cheer===false)return '';
+  const h=new Date().getHours(),w=n===1?'thing':'things';
+  const t=h<12?`🌅 ${n} ${w} done so far. Great start!`:h<18?`🌟 ${n} ${w} done today. Keep it going!`:`🌙 ${n} ${w} done today. Great job today, you can rest now.`;
+  return `<div class="wins">${t}</div>`}
+
+/* ---------- daily boost: encouragement, baby tips, looking after you ---------- */
+const MOTI=(()=>{
+const L=[
+'You are doing better than you think. Every feed, cuddle and nappy is love in action.',
+'You don’t need to be perfect. Your baby needs a loving parent who turns up, and that’s you.',
+'Some days the win is simply getting through. That counts.',
+'It’s okay to have hard days. Hard days pass, and the soft moments stay.',
+'Feeling overwhelmed doesn’t mean you’re failing. It means you’re looking after a tiny person around the clock.',
+'Your baby doesn’t need a spotless house. They need you.',
+'Every baby and every mum finds her own rhythm. Comparing only steals your joy.',
+'You grew a human and now you’re keeping them safe and loved. That is huge.',
+'One small thing today is enough.',
+'Asking for help isn’t weakness. It’s how strong mums get through.',
+'To your baby, you are the whole world, and you’re exactly who they want.',
+'Be as kind to yourself as you would be to a friend in your shoes.',
+'That sleepy smile, that tiny hand around your finger. Notice one moment like that today.',
+'You’re learning your baby and your baby is learning you. Give you both time.',
+'Rest is productive too.',
+'You’ve done every single day so far. You can do today as well.'];
+const B=[
+'Safer sleep: always put baby on their back to sleep, on a firm, flat surface, with nothing loose in the cot.',
+'Keep baby’s head uncovered when they sleep and the room comfortable. 16 to 20°C is the usual advice.',
+'Hunger cues: hands to mouth, rooting, lip-smacking. Crying is a late sign, so feed when you see the early ones.',
+'Tummy time: a few minutes at a time while baby is awake and watched helps build neck and shoulder strength.',
+'Talk, sing and read to your baby. They love your voice long before they understand the words.',
+'Newborns sleep in short stretches, day and night. Frequent waking is normal.',
+'After a feed, hold baby upright and gently rub or pat their back. Some babies don’t need it every time.',
+'Crying often peaks around 6 to 8 weeks, then eases for most babies. It does get better.',
+'If the crying is getting too much, it’s safe to lay baby in their cot and step away for a few minutes to breathe. Never shake a baby.',
+'Skin-to-skin helps calm baby and builds bonding, for mums and dads.',
+'Keep baby’s red book handy for jabs, weights and check-ups, and take it to every appointment.',
+'Trust your instincts. If baby is floppy, very sleepy, feeding poorly, or has a temperature of 38°C or more under 3 months, call 111 or your GP. In an emergency, call 999.',
+'Keep your home and car smoke-free. It’s one of the best things you can do for baby’s health.',
+'Plenty of wet nappies is a good sign baby is feeding well. Ask your health visitor if you’re ever unsure.',
+'A short walk in daylight with the pram is good for you both.',
+'Cluster feeding and growth spurts are common, with lots of feeding for a day or two. Ask your health visitor or midwife if you’re worried about feeding.'];
+const Y=[
+'Sleep when baby sleeps, even for 20 minutes. The dishes can wait.',
+'Keep a water bottle wherever you feed. Drink up.',
+'Eat something proper today. Toast and peanut butter counts.',
+'Step outside for five minutes. Daylight and fresh air lift your mood.',
+'When someone offers help, say yes and give them a specific job.',
+'Your body did something incredible. Healing takes time, so go gently.',
+'Message a friend today. Connection really helps.',
+'Lower the bar. A “good enough” day is a good day.',
+'Protect one small thing that’s just yours today: a hot drink, a song, a shower.',
+'Baby blues in the first couple of weeks are common. If low mood lasts longer or feels heavy, tell your GP or health visitor.',
+'Don’t compare your insides to everyone else’s Instagram outsides.',
+'Ask your partner to take a nappy shift or a night feed so you can rest.',
+'The 6 to 8 week postnatal check is for you too. Use it to mention anything about your body or your mood.',
+'Gentle movement, like a short walk, is plenty for now.',
+'You’re allowed to feel more than one thing at once: love, exhaustion, joy and worry.',
+'Write down one good thing from today in Notes.'];
+const o=[];for(let i=0;i<16;i++)o.push(['💛',L[i]],['🍼',B[i]],['🌿',Y[i]]);return o})();
+function motiToday(){const d=new Date(),day=Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e5);return MOTI[(day+motiOff)%MOTI.length]}
+function motiNext(){motiOff++;render()}
+function motiSave(){const m=motiToday();S.notes.unshift({id:uid(),text:m[1],color:'#ffd1dc',pin:false,img:''});save();toast('Saved to Notes')}
+function motiCard(){
+  if(S.settings.moti===false)return '';
+  const m=motiToday(),label=m[0]==='💛'?'A little encouragement':m[0]==='🍼'?'Baby tip':'Look after you';
+  return `<div class="card moti"><div class="meta" style="font-weight:800">${m[0]} ${label}</div><div class="mq">${esc(m[1])}</div>
+    <div class="acts"><button class="a-cal" onclick="motiNext()">Another one</button><button class="a-cal" onclick="motiSave()">Save to Notes</button></div>
+    <details ${motiHelp?'open':''} ontoggle="motiHelp=this.open"><summary style="font-weight:800">💛 Finding it hard? Help is here</summary>
+      <p>Feeling low, anxious or overwhelmed after having a baby is very common, and it can be treated. Tell your GP, health visitor or midwife. They won’t judge you.</p>
+      <ul style="padding-left:1.1em;margin:0"><li><b>Samaritans</b>: <a href="tel:116123">116 123</a>, free, any time</li>
+      <li><b>NHS 111</b>: <a href="tel:111">111</a>, choose the mental health option</li>
+      <li><b>PANDAS Foundation</b>: <a href="tel:08081961776">0808 1961 776</a>, free support for parents (check pandasfoundation.org.uk for hours)</li>
+      <li><b>Emergency</b> or thoughts of harming yourself: <a href="tel:999">999</a> or go to A&amp;E</li></ul>
+      <p class="meta">General tips only. They don’t replace advice from your health visitor or GP.</p></details></div>`}
+
+/* ---------- routines (reset every day) ---------- */
+function rtTick(iid){const td=todayStr();S.rlog[td]=S.rlog[td]||{};if(S.rlog[td][iid])delete S.rlog[td][iid];else S.rlog[td][iid]=1;
+  const on=!!S.rlog[td][iid];winAdd(on?1:-1);save();finish(iid,on);
+  if(on){const r=S.routines.find(x=>x.items.some(i=>i.id===iid));celebrate(r&&r.items.every(i=>S.rlog[td][i.id])?'routine':'one',iid)}}
+function rtOpen(id){openRt=openRt===id?null:id;render()}
+function rtModal(id){const r=id?S.routines.find(x=>x.id===id):null;const v=r||{name:'',items:[]};
+  openModal(`<h2>${r?'Edit routine':'New routine'}</h2><form onsubmit="rtSave(event,'${r?r.id:''}')"><label>Name</label><input id="rn" value="${esc(v.name)}" required placeholder="e.g. Baby bag"><label>Steps (one per line)</label><textarea id="ri" rows="7">${esc(v.items.map(i=>i.t).join('\n'))}</textarea><div class="mbtns"><button class="btn">Save</button>${r?`<button type="button" class="btn danger" onclick="rtDel('${r.id}')">Delete</button>`:''}<button type="button" class="btn alt" onclick="closeModal()">Cancel</button></div></form>`)}
+function rtSave(e,id){e.preventDefault();const name=$('#rn').value.trim();if(!name)return;const lines=$('#ri').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  let r=id?S.routines.find(x=>x.id===id):null;if(!r){r={id:uid(),name,emoji:'📋',items:[]};S.routines.push(r)}
+  r.name=name;const old=r.items;r.items=lines.map(t=>old.find(o=>o.t===t)||{id:uid(),t});openRt=r.id;save();closeModal();render()}
+function rtDel(id){snap();S.routines=S.routines.filter(x=>x.id!==id);save();closeModal();render();toast('Deleted',true)}
+function rtCard(){
+  const lg=S.rlog[todayStr()]||{};
+  return `<div class="card"><h2>🔁 Routines</h2>`+S.routines.map(r=>{const n=r.items.length,d=r.items.filter(i=>lg[i.id]).length,open=openRt===r.id;
+    return `<div style="border-top:1px solid var(--line)"><button onclick="rtOpen('${r.id}')" style="width:100%;text-align:left;background:none;border:0;padding:12px 4px;font-weight:800;font-size:1em;display:flex;justify-content:space-between;gap:8px"><span>${r.emoji} ${esc(r.name)}</span><span class="meta">${n&&d===n?'✓ All done':d+'/'+n} ${open?'▲':'▼'}</span></button>`+
+    (open?r.items.map(i=>`<div class="row ${lg[i.id]?'done':''}" data-sw="r:${i.id}"><button class="chk" data-pop="${i.id}" onclick="rtTick('${i.id}')" aria-label="Tick ${esc(i.t)}">${lg[i.id]?'✓':''}</button><div class="txt" onclick="rtTick('${i.id}')">${esc(i.t)}</div></div>`).join('')+`<div class="acts"><button class="a-del" onclick="rtModal('${r.id}')">Edit steps</button></div>`:'')+`</div>`}).join('')+`<div class="acts"><button class="a-del" onclick="rtModal()">+ New routine</button></div></div>`}
+
+/* ---------- meal planner ---------- */
+function addToGroc(names){const l=S.lists.find(x=>x.id==='groc');if(!l)return 0;let n=0;names.forEach(s=>{const t=cap(s.trim());if(t&&!l.items.some(i=>i.t.toLowerCase()===t.toLowerCase()&&!i.done)){l.items.push({id:uid(),t,done:false});n++}});return n}
+function mealSet(d,k,v){S.meals[d]=S.meals[d]||{t:'',ing:''};S.meals[d][k]=v.trim();save()}
+function mealAdd(d,btn){const ing=btn.parentNode.previousElementSibling.value;mealSet(d,'ing',ing);if(!ing.trim()){toast('Add ingredients first');return}const n=addToGroc(ing.split(/,|\n/));save();render();toast(n?n+' added to Groceries':'Already on the list')}
+function mealAddAll(){let n=0;for(let i=0;i<7;i++){const m=S.meals[addDays(todayStr(),i)];if(m&&m.ing)n+=addToGroc(m.ing.split(/,|\n/))}save();render();toast(n?n+' added to Groceries':'Nothing new to add')}
+function vMeals(){
+  let h='<div class="card"><h2>🍽️ Meal plan</h2><div class="meta" style="margin-bottom:6px">Plan dinners for the week, note what you need, then send it to Groceries.</div>';
+  for(let i=0;i<7;i++){const d=addDays(todayStr(),i),m=S.meals[d]||{t:'',ing:''};
+    h+=`<div style="border-top:1px solid var(--line);padding:10px 0"><b>${i===0?'Today':i===1?'Tomorrow':fmtDate(d)}</b><input style="margin-top:6px" placeholder="What’s for dinner?" value="${esc(m.t)}" onchange="mealSet('${d}','t',this.value)"><input style="margin-top:6px" placeholder="Ingredients (e.g. mince, pasta, tomatoes)" value="${esc(m.ing)}" onchange="mealSet('${d}','ing',this.value)"><div class="acts"><button class="a-cal" onclick="mealAdd('${d}',this)">+ Add to shopping list</button></div></div>`}
+  return h+'<button class="btn" style="width:100%" onclick="mealAddAll()">Add the whole week to Groceries</button></div>'}
+
+/* ---------- appointments ---------- */
+function apptModal(id){
+  const a=id?S.appts.find(x=>x.id===id):null;
+  const v=a||{title:'',date:todayStr(),time:'',place:'',notes:'',dur:60,remind:60};
+  const r=v.remind==null?60:v.remind;
+  openModal(`<h2>${a?'Edit appointment':'New appointment'}</h2><form onsubmit="saveAppt(event,'${a?a.id:''}')">
+    <label>What is it?</label><div class="add" style="margin:0"><input id="at" value="${esc(v.title)}" placeholder="e.g. Baby clinic" required>${micBtn('at')}</div>
+    <div class="grid2"><div><label>Date</label><input type="date" id="ad" value="${esc(v.date)}" required></div><div><label>Time</label><input type="time" lang="en-GB" step="60" id="atm" value="${esc(v.time||'')}"></div></div>
+    <label>How long?</label><select id="adu">${[30,60,90,120].map(m=>`<option value="${m}" ${(v.dur||60)===m?'selected':''}>${m<60?m+' minutes':m===60?'1 hour':m===90?'1½ hours':'2 hours'}</option>`).join('')}</select>
+    <label>Remind me (needs a time)</label><select id="arm">${[[0,'At the time'],[15,'15 minutes before'],[30,'30 minutes before'],[60,'1 hour before'],[120,'2 hours before'],[1440,'The day before'],[-1,'No reminder']].map(o=>`<option value="${o[0]}" ${r===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>
+    <label>Where (optional)</label><input id="ap" value="${esc(v.place||'')}" placeholder="Address or clinic">
+    <label>Notes (optional)</label><textarea id="an" rows="2" placeholder="Bring red book, ask about…">${esc(v.notes||'')}</textarea>
+    <div class="mbtns"><button class="btn">Save</button>${a?`<button type="button" class="btn danger" onclick="delAppt('${a.id}')">Delete</button>`:''}<button type="button" class="btn alt" onclick="closeModal()">Cancel</button></div></form>`);
+}
+function saveAppt(e,id){e.preventDefault();
+  const o={title:$('#at').value.trim(),date:$('#ad').value,time:$('#atm').value,place:$('#ap').value.trim(),notes:$('#an').value.trim(),dur:+$('#adu').value||60,remind:+$('#arm').value};
+  if(!o.title||!o.date)return;
+  if(id){Object.assign(S.appts.find(x=>x.id===id),o);for(const k in S.notified)if(k.indexOf('a'+id)===0)delete S.notified[k]}else S.appts.push(Object.assign({id:uid()},o));
+  save();closeModal();render()}
+function delAppt(id){snap();S.appts=S.appts.filter(a=>a.id!==id);save();closeModal();render();toast('Deleted',true)}
+function icsAppt(id){const a=S.appts.find(x=>x.id===id);if(a&&!download((a.title.replace(/[^\w]+/g,'-')||'appointment')+'.ics',icsFor(a),'text/calendar'))toast('Couldn’t make the file. Use Google Calendar.')}
+
+/* ---------- notes ---------- */
+const COLORS=['#fff3a8','#ffd1dc','#c9efd8','#cfe4ff','#ffe0b8'];
+function readImg(file,cb){const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const M=720,k=Math.min(1,M/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',.6))};im.onerror=()=>toast('Couldn’t read that photo');im.src=r.result};r.onerror=()=>toast('Couldn’t read that photo');r.readAsDataURL(file)}
+function pickPhoto(inp){const f=inp.files&&inp.files[0];if(!f)return;readImg(f,d=>{pendingImg=d;render();toast('Photo attached')})}
+function pickEditPhoto(inp){const f=inp.files&&inp.files[0];if(!f)return;readImg(f,d=>{editImg=d;$('#mnimg').innerHTML=`<img src="${d}" style="width:100%;border-radius:12px;margin-top:8px" alt="">`})}
+function addNote(){const v=$('#nn').value.trim();if(!v&&!pendingImg)return;S.notes.unshift({id:uid(),text:v,color:noteColor,pin:false,img:pendingImg});pendingImg='';save();render()}
+function noteModal(id){const n=S.notes.find(x=>x.id===id);if(!n)return;editImg=n.img||'';
+  openModal(`<h2>Edit note</h2><form onsubmit="saveNote(event,'${n.id}')"><textarea id="mnt" rows="6">${esc(n.text)}</textarea>
+  <div id="mnimg">${editImg?`<img src="${editImg}" style="width:100%;border-radius:12px;margin-top:8px" alt="">`:''}</div>
+  <div class="acts"><label class="a-cal" style="margin:0;cursor:pointer;color:#1a56c4">📷 ${editImg?'Change':'Add'} photo<input type="file" accept="image/*" onchange="pickEditPhoto(this)" style="display:none"></label>${editImg?`<button type="button" class="a-del" onclick="editImg='';$('#mnimg').innerHTML=''">Remove photo</button>`:''}</div>
+  <label style="display:flex;gap:10px;align-items:center;color:var(--ink);font-size:1em"><input type="checkbox" id="mnp" style="width:auto" ${n.pin?'checked':''}> 📌 Keep at the top</label>
+  <label>Colour</label><div class="add" style="margin:0">${COLORS.map(c=>`<button type="button" data-c="${c}" onclick="pickNote(this)" style="width:40px;height:40px;border-radius:50%;border:${n.color===c?'3px solid var(--ink)':'2px solid #fff'};background:${c}"></button>`).join('')}</div>
+  <input type="hidden" id="mnc" value="${n.color}">
+  <div class="mbtns"><button class="btn">Save</button><button type="button" class="btn danger" onclick="delNote('${n.id}')">Delete</button><button type="button" class="btn alt" onclick="closeModal()">Cancel</button></div></form>`)}
+function pickNote(b){$('#mnc').value=b.dataset.c;document.querySelectorAll('#modal [data-c]').forEach(x=>x.style.border=x===b?'3px solid var(--ink)':'2px solid #fff')}
+function saveNote(e,id){e.preventDefault();const n=S.notes.find(x=>x.id===id);n.text=$('#mnt').value.trim();if(!n.text&&!editImg)return;n.color=$('#mnc').value;n.pin=$('#mnp').checked;n.img=editImg;save();closeModal();render()}
+function delNote(id){snap();S.notes=S.notes.filter(n=>n.id!==id);save();closeModal();render();toast('Deleted',true)}
+
+/* ---------- task edit ---------- */
+function taskModal(id){const t=S.tasks.find(x=>x.id===id);if(!t)return;
+  openModal(`<h2>Edit reminder</h2><form onsubmit="saveTask(event,'${t.id}')">
+  <label>Reminder</label><div class="add" style="margin:0"><input id="mtt" value="${esc(t.t)}" required>${micBtn('mtt')}</div>
+  <div class="grid2"><div><label>Day</label><input type="date" id="mtd" value="${esc(t.date)}" required></div><div><label>Time (gives an alert)</label><input type="time" lang="en-GB" step="60" id="mttm" value="${esc(t.time||'')}"></div></div>
+  <label>Repeat</label><select id="mtr">${Object.keys(REP).map(k=>`<option value="${k}" ${(t.rep||'')===k?'selected':''}>${REP[k]}</option>`).join('')}</select>
+  <div class="acts"><a class="a-cal" href="${gcal({title:t.t,date:t.date,time:t.time,dur:15})}" target="_blank" rel="noopener">📲 Add to Google Calendar</a></div>
+  <div class="mbtns"><button class="btn">Save</button><button type="button" class="btn danger" onclick="delTask('${t.id}')">Delete</button><button type="button" class="btn alt" onclick="closeModal()">Cancel</button></div></form>`)}
+function saveTask(e,id){e.preventDefault();const t=S.tasks.find(x=>x.id===id);const v=$('#mtt').value.trim();if(!v)return;
+  t.t=v;t.date=$('#mtd').value||t.date;t.time=$('#mttm').value;t.rep=$('#mtr').value;if(t.rep){t.done=false}
+  for(const k in S.notified)if(k.indexOf('t'+id)===0)delete S.notified[k];save();closeModal();render()}
+function delTask(id){snap();S.tasks=S.tasks.filter(x=>x.id!==id);save();closeModal();render();toast('Deleted',true)}
+
+/* ---------- modal & settings ---------- */
+let modalT=null;
+function openModal(h){clearTimeout(modalT);$('#modal').classList.remove('out');$('#modalwrap').classList.remove('out');$('#modal').style.transform='';$('#modal').innerHTML=h;$('#modalwrap').hidden=false;$('#modal').scrollTop=0;const i=$('#modal input[type=text],#modal input:not([type])');if(i&&!i.value)setTimeout(()=>i.focus(),50)}
+function hideModal(){const m=$('#modal'),w=$('#modalwrap');w.hidden=true;w.classList.remove('out');m.classList.remove('out');m.style.transform='';m.style.transition='';m.style.animation='';m.innerHTML='';if(recog){try{recog.stop()}catch(e){}}}
+function closeModal(){const w=$('#modalwrap');if(w.hidden)return;clearTimeout(modalT);if(reduceMotion){hideModal();return}w.classList.add('out');$('#modal').classList.add('out');modalT=setTimeout(hideModal,230)}
+function openSettings(){
+  const s=S.settings,perm=('Notification' in window)?Notification.permission:'none';
+  openModal(`<h2>Settings</h2>
+  <label>Your name (so I can say hello)</label><div class="add" style="margin:0"><input id="nm" value="${esc(S.name)}" placeholder="Your name"><button class="btn alt" onclick="S.name=$('#nm').value.trim();save();render();toast('Saved')">Save</button></div>
+  <label>Text size</label><div class="seg">${[['m','Normal'],['l','Large'],['xl','Extra large']].map(x=>`<button class="${s.size===x[0]?'on':''}" onclick="S.settings.size='${x[0]}';save();render();openSettings()">${x[1]}</button>`).join('')}</div>
+  <label>Daily boost on Today</label><div class="seg"><button class="${s.moti!==false?'on':''}" onclick="S.settings.moti=true;save();render();openSettings()">Show</button><button class="${s.moti===false?'on':''}" onclick="S.settings.moti=false;save();render();openSettings()">Hide</button></div>
+  <label>Celebrations when I tick things off</label><div class="seg"><button class="${s.cheer!==false?'on':''}" onclick="S.settings.cheer=true;save();render();openSettings()">On</button><button class="${s.cheer===false?'on':''}" onclick="S.settings.cheer=false;save();render();openSettings()">Off</button></div>
+  <label>Glass effects</label><div class="seg"><button class="${s.glass!==false?'on':''}" onclick="S.settings.glass=true;save();render();openSettings()">Full</button><button class="${s.glass===false?'on':''}" onclick="S.settings.glass=false;save();render();openSettings()">Simple (faster)</button></div>
+  <label>Light or dark</label><div class="seg"><button class="${!s.dark?'on':''}" onclick="S.settings.dark=false;save();render();openSettings()">Light</button><button class="${s.dark?'on':''}" onclick="S.settings.dark=true;save();render();openSettings()">Dark</button></div>
+  <label>My Google Calendar link</label><input id="cal" value="${esc(s.cal)}" onchange="S.settings.cal=/^https?:/i.test(this.value.trim())?this.value.trim():'https://calendar.google.com/';save();render()">
+  <label>Baby tracker link (adds a button on Today)</label><input id="bu" value="${esc(s.babyUrl||'')}" placeholder="https://…" onchange="S.settings.babyUrl=/^https?:/i.test(this.value.trim())?this.value.trim():'';save();render()">
+  <label>Alerts</label>${'Notification' in window&&perm!=='denied'?`<button class="btn ${s.notify&&perm==='granted'?'sage':'alt'}" onclick="enableNotify()">${s.notify&&perm==='granted'?'✓ Phone alerts are on':'Turn on phone alerts'}</button>`:'<div class="meta">Phone alerts aren’t available here. You’ll still get a banner when the app is open.</div>'}
+  <div class="tip">💡 Alerts show while My Day is open or was used recently. For anything you must not miss, tap <b>Add to Google Calendar</b> on it. Google will then remind you even when the app is closed.</div>
+  <label>Keep my things safe</label><div class="meta" style="margin-bottom:8px">Everything is stored only on this phone. Save a backup now and then, or before changing phone.</div>
+  <div class="mbtns" style="margin-top:0"><button class="btn alt" onclick="backup()">Download backup</button><button class="btn alt" onclick="copyText(JSON.stringify(S),'Backup copied. Paste it somewhere safe, like a note to yourself.')">Copy backup</button><button class="btn alt" onclick="restoreModal()">Restore</button></div>
+  ${installEvt?'<div class="mbtns"><button class="btn" onclick="installEvt.prompt();installEvt=null;closeModal()">Install My Day on this phone</button></div>':'<div class="tip">To put My Day on the home screen: on iPhone tap Share → <b>Add to Home Screen</b>. On Android tap ⋮ → <b>Install app</b>.</div>'}
+  <div class="mbtns"><button class="btn danger" onclick="wipeAsk()">Erase everything</button><button class="btn alt" onclick="closeModal()">Close</button></div>`)}
+function enableNotify(){if(!('Notification' in window))return;Notification.requestPermission().then(p=>{S.settings.notify=(p==='granted');save();openSettings();if(p==='granted')toast('Phone alerts on')})}
+function backup(){if(!download('my-day-backup-'+todayStr()+'.json',JSON.stringify(S,null,1),'application/json'))toast('Couldn’t download. Try Copy backup.')}
+function restoreModal(){openModal(`<h2>Restore a backup</h2><label>Choose a backup file</label><input type="file" id="bkf" accept=".json,application/json"><label>…or paste backup text</label><textarea id="bkt" rows="5"></textarea><div class="meta" style="margin-top:8px">This replaces what is on this phone now.</div><div class="mbtns"><button class="btn" onclick="doRestore()">Restore</button><button class="btn alt" onclick="closeModal()">Cancel</button></div>`)}
+function validBackup(p){return p&&typeof p==='object'&&!Array.isArray(p)&&Array.isArray(p.lists)&&p.lists.every(l=>l&&typeof l==='object'&&typeof l.name==='string'&&Array.isArray(l.items))&&Array.isArray(p.tasks)&&p.tasks.every(t=>t&&typeof t==='object')&&Array.isArray(p.appts)&&Array.isArray(p.notes)&&(!p.settings||(typeof p.settings==='object'&&!Array.isArray(p.settings)))&&(!p.routines||Array.isArray(p.routines))}
+function doRestore(){const f=$('#bkf').files[0],t=$('#bkt').value.trim();
+  const apply=x=>{try{const p=JSON.parse(x);if(!validBackup(p))throw 0;snap();S=norm(p);save();closeModal();render();toast('Backup restored',true)}catch(e){toast('That doesn’t look like a My Day backup')}};
+  if(f){const r=new FileReader();r.onload=()=>apply(r.result);r.readAsText(f)}else if(t)apply(t);else toast('Choose a file or paste the text first')}
+function wipeAsk(){openModal(`<h2>Erase everything?</h2><p>This removes every reminder, list, note and appointment from this phone. Save a backup first if you’re unsure.</p><div class="mbtns"><button class="btn danger" onclick="snap();S=DEF();save();closeModal();render();toast('All cleared',true)">Yes, erase</button><button class="btn alt" onclick="closeModal()">No, go back</button></div>`)}
+
+/* ---------- alerts ---------- */
+function renderBanner(){$('#banner').innerHTML=alerts.map(a=>`<div class="alert" role="alert"><b>${esc(a.title)}</b>${esc(a.body)}<div class="acts">${a.tid?`<button onclick="bnDone('${a.key}')">✓ Done</button>`:''}<button onclick="bnSnooze('${a.key}')">Snooze 10 min</button><button onclick="bnOk('${a.key}')">OK</button></div></div>`).join('')}
+function bnOk(k){alerts=alerts.filter(a=>a.key!==k);renderBanner()}
+function bnDone(k){const a=alerts.find(x=>x.key===k);if(a&&a.tid){const t=S.tasks.find(x=>x.id===a.tid);if(t&&!isDone(t,a.ds))toggleTask(a.tid,a.ds)}bnOk(k)}
+function bnSnooze(k){S.snooze[k]=Date.now()+600000;delete S.notified[k];save();bnOk(k);toast('Snoozed for 10 minutes')}
+function fire(key,title,body,tid,ds){
+  S.notified[key]=Date.now();delete S.snooze[key];save();alerts=alerts.filter(a=>a.key!==key);alerts.push({key,title,body,tid,ds});renderBanner();
+  try{if(navigator.vibrate)navigator.vibrate([200,100,200])}catch(e){}
+  if(S.settings.notify&&'Notification' in window&&Notification.permission==='granted'){const o={body,tag:key,icon:'icon-192.png'};
+    try{if(navigator.serviceWorker&&navigator.serviceWorker.ready)navigator.serviceWorker.ready.then(r=>r.showNotification(title,o)).catch(()=>{try{new Notification(title,o)}catch(e){}});else new Notification(title,o)}catch(e){}}}
+function tick(){
+  const now=Date.now(),ds=todayStr();
+  S.tasks.forEach(t=>{if(!t.time||!occursOn(t,ds)||isDone(t,ds))return;const key='t'+t.id+ds;
+    if(S.notified[key]||(S.snooze[key]&&now<S.snooze[key]))return;
+    const p=t.time.split(':'),at=new Date();at.setHours(+p[0],+p[1],0,0);
+    if(now>=at.getTime()&&now-at.getTime()<8*36e5)fire(key,'⏰ '+t.t,fmtTime(t.time)+' today',t.id,ds)});
+  S.appts.forEach(a=>{const r=a.remind==null?60:a.remind;if(!a.time||r<0)return;const key='a'+a.id+a.date+'r'+r;
+    if(S.notified[key]||(S.snooze[key]&&now<S.snooze[key]))return;
+    const p=a.time.split(':'),st=pd(a.date);st.setHours(+p[0],+p[1],0,0);const at=st.getTime()-r*60000;
+    if(now>=at&&now<st.getTime()+36e5)fire(key,'📅 '+a.title,(r?'In '+(r>=1440?'a day':r>=60?(r/60)+(r>60?' hours':' hour'):r+' minutes')+' · ':'Now · ')+fmtTime(a.time)+(a.place?' · '+a.place:''),null,ds)})}
+
+/* ---------- views ---------- */
+function greeting(){const h=new Date().getHours();return (h<12?'Good morning':h<18?'Good afternoon':'Good evening')+(S.name?', '+esc(S.name):'')+' <img class="logo" src="favicon.svg" alt="">'}
+function vToday(){
+  const td=todayStr(),tasks=tasksFor(td);
+  const open=tasks.filter(t=>!isDone(t,td)),done=tasks.filter(t=>isDone(t,td));
+  const todays=S.appts.filter(a=>a.date===td).sort(byTime);
+  const next=upcoming().filter(a=>a.date!==td).slice(0,3);
+  const tm=addDays(td,1),tmT=S.tasks.filter(t=>occursOn(t,tm)).sort(byTime);
+  const gl=S.lists.find(l=>l.id==='groc'),need=gl?gl.items.filter(i=>!i.done).length:0;
+  const row=t=>`<div class="row ${isDone(t,td)?'done':''}" data-sw="t:${t.id}:${td}"><button class="chk" data-pop="${t.id}" onclick="toggleTask('${t.id}','${td}')" aria-label="Tick ${esc(t.t)}">${isDone(t,td)?'✓':''}</button><div class="txt" onclick="taskModal('${t.id}')">${esc(t.t)}${t.time?` <span class="meta">· ${fmtTime(t.time)}</span>`:''}${t.rep?` <span class="meta">· 🔁 ${REP[t.rep]}</span>`:''}${!t.rep&&t.date<td&&!t.done?' <span class="badge soon">Earlier</span>':''}</div>${!t.rep&&t.date<td&&!t.done?`<button class="x" style="font-size:.85em;color:var(--pri);opacity:1;font-weight:800" onclick="moveToday('${t.id}')">Today</button>`:''}</div>`;
+  const askNotify=('Notification' in window&&Notification.permission==='default'&&!S.settings.askedN)?`<div class="card" style="background:var(--pri2)"><b>🔔 Want alerts when something is due?</b><div class="meta" style="margin:4px 0 10px">Your phone will buzz at the time you set.</div><div class="acts"><button class="btn" onclick="S.settings.askedN=1;enableNotify()" style="font-size:.9em">Turn on alerts</button><button class="btn alt" onclick="S.settings.askedN=1;save();render()" style="font-size:.9em">Not now</button></div></div>`:'';
+  return motiCard()+askNotify+`
+  <div class="card"><h2>📅 Today's appointments</h2>
+    ${todays.length?todays.map(a=>`<div class="appt today" onclick="apptModal('${a.id}')" style="cursor:pointer"><b>${esc(a.title)}</b><div class="meta">${a.time?fmtTime(a.time):'All day'}${a.place?' · '+esc(a.place):''}</div>${a.notes?`<div class="meta">${esc(a.notes)}</div>`:''}</div>`).join(''):'<div class="empty">Nothing booked today 🎉</div>'}
+  </div>
+  <div class="card"><h2>✅ Things to do today ${tasks.length?`<span class="badge">${done.length}/${tasks.length}</span>`:''}</h2>
+    ${winsLine()}
+    ${open.length?open.map(row).join(''):tasks.length?'<div class="empty">All done for today. Well done! 🎉</div>':'<div class="empty">All clear. Add something below.</div>'}
+    <div class="add"><input id="nt" placeholder="e.g. Call the GP at 3pm" onkeydown="if(event.key==='Enter')addTask()" autocomplete="off">${micBtn('nt')}<button class="btn" onclick="addTask()">Add</button></div>
+    <div class="meta" style="margin:6px 4px 0">Try “Bins tomorrow”, “Vitamins every day” or “Nursery on Friday at 9am”</div>
+    <details id="ndet" style="margin-top:8px"><summary class="meta">Set a different day / time / repeat</summary>
+      <div class="grid2"><div><label>Day</label><input type="date" id="ntd" value="${td}"></div><div><label>Time (gives an alert)</label><input type="time" lang="en-GB" step="60" id="ntt"></div></div>
+      <label>Repeat</label><select id="ntr">${Object.keys(REP).map(k=>`<option value="${k}">${REP[k]}</option>`).join('')}</select></details>
+    ${done.length?`<div class="acts"><button class="a-del" onclick="showDone=!showDone;render()">${showDone?'Hide':'Show'} ticked (${done.length})</button><button class="a-del" onclick="clearDoneTasks()">Clear ticked</button></div>${showDone?done.map(row).join(''):''}`:''}
+  </div>
+  ${next.length?`<div class="card"><h2>⏭️ Coming up</h2>${next.map(a=>`<div class="appt" onclick="apptModal('${a.id}')" style="cursor:pointer"><b>${esc(a.title)}</b> ${when(a.date)}<div class="meta">${fmtDate(a.date)}${a.time?' · '+fmtTime(a.time):''}</div></div>`).join('')}</div>`:''}
+  ${tmT.length?`<div class="card"><h2>🌙 Tomorrow</h2>${tmT.map(t=>`<div class="meta" style="padding:4px 0;color:var(--ink)">• ${esc(t.t)}${t.time?' · '+fmtTime(t.time):''}</div>`).join('')}</div>`:''}
+  ${rtCard()}
+  ${S.settings.babyUrl?`<div class="card"><a class="btn" style="display:block;text-align:center;text-decoration:none" href="${esc(S.settings.babyUrl)}" target="_blank" rel="noopener">👶 Open baby tracker</a></div>`:''}
+  <div class="card" onclick="tab='lists';curList='groc';animTab=true;render()" style="cursor:pointer"><h2>🛒 Shopping</h2><div class="meta">${need?need+' item'+(need>1?'s':'')+' still to get':'Nothing on the list'} – tap to open</div></div>`}
+function listChips(sel){return `<div class="chips">${S.lists.map(x=>`<button class="chip ${x.id===sel?'on':''}" onclick="curList='${x.id}';confirmDel=false;render()">${x.emoji} ${esc(x.name)}</button>`).join('')}<button class="chip ${sel==='meals'?'on':''}" onclick="curList='meals';render()">🍽️ Meals</button></div>`}
+function vLists(){
+  if(curList==='meals')return listChips('meals')+vMeals();
+  const l=curL(),open=l.items.filter(i=>!i.done),done=l.items.filter(i=>i.done);
+  return `
+  ${listChips(l.id)}
+  <div class="card"><h2>${l.emoji} ${esc(l.name)}</h2>
+    <div class="add" style="margin:0 0 8px"><input id="ni" placeholder="Add items (e.g. milk, nappies, bread)" onkeydown="if(event.key==='Enter')addItem()" autocomplete="off">${micBtn('ni')}<button class="btn" onclick="addItem()">Add</button></div>
+    ${[...open,...done].map(i=>`<div class="row ${i.done?'done':''}" data-sw="i:${i.id}"><button class="chk" data-pop="${i.id}" onclick="toggleItem('${i.id}')" aria-label="Tick ${esc(i.t)}">${i.done?'✓':''}</button><div class="txt" onclick="toggleItem('${i.id}')">${esc(i.t)}</div><button class="x" onclick="delItem('${i.id}')" aria-label="Remove ${esc(i.t)}">×</button></div>`).join('')||'<div class="empty">Empty list. Type or speak what you need 🎤</div>'}
+    <div class="acts">${open.length?`<button class="a-cal" onclick="shareList()">📤 Share list</button><a class="a-cal" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(shareText(l))}">WhatsApp</a>`:''}${done.length?`<button class="a-del" onclick="clearDoneItems()">Remove ticked</button><button class="a-del" onclick="uncheckAll()">Untick all (reuse list)</button>`:''}
+      <button class="a-del" onclick="renameList()">Rename</button>${S.lists.length>1?`<button class="a-del" onclick="delList()">${confirmDel?'Tap again to delete list':'Delete list'}</button>`:''}</div>
+  </div>
+  ${l.id==='groc'?quickCard(l):''}
+  <div class="card"><h2>➕ New list</h2><div class="add" style="margin:0"><input id="nl" placeholder="e.g. Chemist, Pack for hospital" onkeydown="if(event.key==='Enter')newListGo()"><button class="btn alt" onclick="newListGo()">Create</button></div></div>`}
+function apptCard(a){
+  const link=gcal({title:a.title,date:a.date,time:a.time,dur:a.dur,place:a.place,notes:a.notes});
+  return `<div class="appt ${daysUntil(a.date)===0?'today':''}"><b>${esc(a.title)}</b> ${when(a.date)}
+    <div class="meta">${fmtDate(a.date)} · ${a.time?fmtTime(a.time):'All day'}${a.place?' · 📍 '+esc(a.place):''}</div>${a.notes?`<div class="meta">${esc(a.notes)}</div>`:''}
+    <div class="acts"><a class="a-cal" href="${link}" target="_blank" rel="noopener">📲 Add to Google Calendar</a><button class="a-cal" onclick="icsAppt('${a.id}')">Calendar file</button><button class="a-del" onclick="apptModal('${a.id}')">Edit</button></div></div>`}
+function vAppts(){
+  const up=upcoming(),past=S.appts.filter(a=>daysUntil(a.date)<0).sort((a,b)=>b.date.localeCompare(a.date));
+  return `<button class="btn" style="width:100%;margin:10px 0" onclick="apptModal()">➕ Add an appointment</button>
+  <div class="card"><h2>📅 Upcoming</h2>${up.length?up.map(apptCard).join(''):'<div class="empty">No appointments yet.</div>'}
+    <div class="tip">💡 Tap <b>Add to Google Calendar</b>, then <b>Save</b> in the page that opens. Google will then send phone reminders even when this app is closed.</div>
+    <div class="acts"><a class="a-cal" href="${esc(S.settings.cal)}" target="_blank" rel="noopener">Open my Google Calendar</a></div></div>
+  ${past.length?`<button class="chip" onclick="showPast=!showPast;render()">${showPast?'Hide':'Show'} past (${past.length})</button>${showPast?`<div class="card">${past.map(apptCard).join('')}</div>`:''}`:''}`}
+function vNotes(){
+  return `<div class="card"><h2>📌 Sticky notes</h2>
+    <textarea id="nn" rows="3" placeholder="Write it down so it's not on your mind…"></textarea>
+    <div class="add" style="align-items:center;gap:10px">${COLORS.map(c=>`<button onclick="noteColor='${c}';render()" aria-label="Colour" style="width:36px;height:36px;border-radius:50%;border:${noteColor===c?'3px solid var(--ink)':'2px solid #fff'};background:${c};box-shadow:var(--shadow);flex:none"></button>`).join('')}</div>
+    ${pendingImg?`<img src="${pendingImg}" style="width:100%;max-height:200px;object-fit:cover;border-radius:12px;margin-top:10px" alt="Attached photo"><div class="acts"><button class="a-del" onclick="pendingImg='';render()">Remove photo</button></div>`:''}
+    <div class="add">${micBtn('nn')}<label class="mic" style="display:grid;place-items:center;cursor:pointer" aria-label="Add a photo">📷<input type="file" accept="image/*" onchange="pickPhoto(this)" style="display:none"></label><button class="btn" style="flex:1" onclick="addNote()">Stick it</button></div></div>
+  ${S.notes.length?`<input id="nq" type="text" placeholder="🔍 Search my notes" value="${esc(noteQ)}" oninput="noteQ=this.value;render()" style="margin-bottom:12px">`:''}
+  ${(()=>{const q=noteQ.trim().toLowerCase();const ns=S.notes.filter(n=>!q||(n.text||'').toLowerCase().includes(q)).sort((a,b)=>(b.pin?1:0)-(a.pin?1:0));
+    return ns.length?`<div class="notes">${ns.map(n=>`<div class="note" style="background:${n.color}" onclick="noteModal('${n.id}')">${n.pin?'📌 ':''}${esc(n.text).replace(/\n/g,'<br>')}${n.img?`<img src="${n.img}" alt="" style="width:100%;border-radius:8px;margin-top:8px;display:block">`:''}<button class="x" onclick="event.stopPropagation();delNote('${n.id}')" aria-label="Delete note">×</button></div>`).join('')}</div>`:S.notes.length?'<div class="empty">No notes match.</div>':'<div class="empty">No notes yet. Things like “Parked on level 3” or “Ask about jabs”.</div>'})()}`}
+/* Me Time: additive, private local-only journal; never removes S.notes. */
+const ME_TEMPLATES={
+  rest:['I managed to get some rest','I took a shower and felt refreshed','I ate a proper meal','I drank some water','I listened to my body and slowed down','I asked for help when I needed it'],
+  baby:['I enjoyed cuddles with my baby','I soothed my baby','I made it through a difficult night','I enjoyed a bonding moment','I noticed something new about my baby','I felt a little more confident as a mum'],
+  self:['I made time for something I enjoy','I got dressed and felt good','I enjoyed a peaceful drink','I listened to music','I stepped outside for fresh air','I took a moment just for me'],
+  everyday:['I managed a household task','I prepared something to eat','I got through a busy day','I finished something I had put off','I made someone smile','I gave myself permission to leave things undone']};
+const ME_PROMPTS=['Put on a favourite song and dance for two minutes 🎶','Enjoy a cosy drink and a quiet moment ☕','Try a five-minute creative activity 🎨','Name three things that made you smile 💕','Take a gentle stretch or breathing break 🌿','Choose a happy memory and write a sentence about it 🌸'];
+let meSection='home',meCategory='rest',mePrompt=-1;
+function meToday(){S.meTime=S.meTime||{};return S.meTime[todayStr()]||{mood:'',done:[],reflection:'',moments:[],littleWins:[]}}
+function meWrite(item){S.meTime=S.meTime||{};S.meTime[todayStr()]=item;save()}
+function meUpdate(field,value){const m=Object.assign({mood:'',done:[],reflection:'',moments:[],littleWins:[]},meToday());if(field==='toggle'){const set=new Set(m.done);set.has(value)?set.delete(value):set.add(value);m.done=[...set]}else m[field]=value;meWrite(m);if(field!=='reflection')render()}
+function meNavigate(section){meSection=section;render()}
+function meAdd(kind){const el=document.getElementById(kind==='moments'?'meMomentInput':'meWinInput');if(!el)return;const value=el.value.trim().slice(0,240);if(!value)return;const m=meToday();const field=kind==='moments'?'moments':'littleWins';m[field]=Array.isArray(m[field])?m[field]:[];m[field].unshift({id:uid(),text:value,at:new Date().toISOString()});meWrite(m);if(kind==='littleWins')meCelebrate();render()}
+function meTemplate(cat,index){const label=ME_TEMPLATES[cat]&&ME_TEMPLATES[cat][index];if(!label)return;const m=meToday();m.littleWins=Array.isArray(m.littleWins)?m.littleWins:[];if(m.littleWins.some(w=>w.text===label)){toast('Already celebrated today 🌸');return}m.littleWins.unshift({id:uid(),text:label,at:new Date().toISOString()});meWrite(m);meCelebrate();render()}
+function meDelete(kind,id){const m=meToday(),field=kind==='moments'?'moments':'littleWins';m[field]=(m[field]||[]).filter(x=>x.id!==id);meWrite(m);render()}
+function meCelebrate(){celebrate('one');if(!reduceMotion){const f=document.createElement('span');f.className='md131-flower';f.textContent='🌸 ✨ 🌷';f.style.left=Math.max(15,Math.min(innerWidth-160,lastClick.x-55))+'px';f.style.top=Math.max(80,lastClick.y-35)+'px';document.body.appendChild(f);setTimeout(()=>f.remove(),1150)}}
+function meEntries(kind){const m=meToday(),items=kind==='moments'?m.moments:m.littleWins;return (items||[]).length?items.map(x=>`<div class="md131-entry"><span>${kind==='moments'?'💜':'🌟'} ${esc(x.text)}</span><button aria-label="Remove entry" onclick="meDelete('${kind}','${x.id}')">×</button></div>`).join(''):'<p class="meta">Nothing added yet. There is no rush 💗</p>'}
+function vMeTime(){const m=meToday(),count=(m.littleWins||[]).length, moods=[['🥰','Loved'],['😊','Happy'],['😌','Calm'],['🥱','Tired'],['🥺','Low']];
+ const top=`<div class="md131-hero"><div class="md131-eyebrow">YOUR LITTLE CORNER</div><h2>Me Time 🌸</h2><p>Little moments. Big smiles. Just for you.</p></div>`;
+ const back=meSection==='home'?'':`<button class="md131-back" onclick="meNavigate('home')">← Back to Me Time</button>`;
+ if(meSection==='home')return `${top}<div class="card md131-mood-card"><h2>💗 How are you feeling?</h2><div class="md131-moods">${moods.map(([e,label])=>`<button class="md131-mood ${m.mood===label?'selected':''}" aria-pressed="${m.mood===label}" onclick="meUpdate('mood','${label}')"><span>${e}</span>${label}</button>`).join('')}</div></div>
+ <div class="md131-grid"><button class="md131-tile purple" onclick="meNavigate('moments')"><span>📸</span><strong>My Moments</strong><small>Today's activities</small></button><button class="md131-tile pink" onclick="meNavigate('wins')"><span>🏆</span><strong>Little Wins</strong><small>Celebrate yourself</small></button><button class="md131-tile green" onclick="meNavigate('garden')"><span>🌸</span><strong>Blossom Garden</strong><small>Watch it grow</small></button><button class="md131-tile orange" onclick="meNavigate('play')"><span>🎲</span><strong>Play Corner</strong><small>Something fun</small></button></div>
+ <div class="card"><h2>🌿 A moment for me</h2>${[['pause','Take a quiet moment'],['water','Drink some water'],['kind','Do one kind thing for myself']].map(([id,label])=>`<label class="md131-check"><input type="checkbox" ${m.done.includes(id)?'checked':''} onchange="meUpdate('toggle','${id}')">${label}</label>`).join('')}</div>
+ <div class="card"><h2>💌 One good thing</h2><textarea id="meReflection" rows="3" maxlength="500" placeholder="A little moment you appreciated today…" oninput="meUpdate('reflection',this.value)">${esc(m.reflection||'')}</textarea><p class="meta">Private on this device · included in your backup</p></div>`;
+ if(meSection==='moments')return `${top}${back}<div class="card md131-panel purple"><h2>📸 My Day in Moments</h2><p>What did you do today? A cuddle, a walk, a nap — everything counts.</p><input id="meMomentInput" maxlength="240" placeholder="e.g. Enjoyed a peaceful morning"><button class="btn md131-action" onclick="meAdd('moments')">+ Add my moment</button>${meEntries('moments')}</div>`;
+ if(meSection==='wins')return `${top}${back}<div class="card md131-panel pink"><h2>🏆 Little Wins</h2><p>Small achievements deserve celebrating, especially on the hard days.</p><div class="md131-categories">${[['rest','🌷 Rest'],['baby','🍼 Baby'],['self','💖 Me'],['everyday','🏡 Everyday']].map(([id,name])=>`<button class="${meCategory===id?'active':''}" onclick="meCategory='${id}';render()">${name}</button>`).join('')}</div><div class="md131-templates">${ME_TEMPLATES[meCategory].map((x,i)=>`<button onclick="meTemplate('${meCategory}',${i})">🌸 ${esc(x)}</button>`).join('')}</div><label for="meWinInput">Or write your own</label><input id="meWinInput" maxlength="240" placeholder="Something I'm proud of…"><button class="btn md131-action" onclick="meAdd('littleWins')">✨ Celebrate my win</button><h3>Today's little wins (${count})</h3>${meEntries('littleWins')}</div>`;
+ if(meSection==='garden'){const total=Object.values(S.meTime||{}).reduce((n,x)=>n+(Array.isArray(x.littleWins)?x.littleWins.length:0),0),shown=Math.min(total,24);return `${top}${back}<div class="card md131-panel green"><h2>🌷 My Blossom Garden</h2><p>Every little win helps your garden bloom.</p><div class="md131-garden" aria-label="${total} flowers earned">${Array.from({length:shown},(_,i)=>`<span class="md131-blossom" style="animation-delay:${Math.min(i*60,600)}ms">${['🌸','🌷','🌼','🌺'][i%4]}</span>`).join('')||'<span class="md131-seed">🌱 Your first blossom is waiting</span>'}</div><p class="md131-total">${total} ${total===1?'blossom':'blossoms'} grown</p><button class="btn md131-action" onclick="meNavigate('wins')">Celebrate a little win 🌸</button></div>`}
+ return `${top}${back}<div class="card md131-panel orange"><h2>🎲 Play Corner</h2><p>Something gentle to try when you're bored. No scores, no pressure.</p><div class="md131-surprise">🎁<p>${mePrompt<0?'A surprise is waiting for you!':esc(ME_PROMPTS[mePrompt])}</p></div><button class="btn md131-action" onclick="mePrompt=(mePrompt+1+Math.floor(Math.random()*(ME_PROMPTS.length-1)))%ME_PROMPTS.length;render()">✨ Surprise me!</button></div>`;
+}
+const TABS=[['today','🌸','Today'],['lists','🛒','Lists'],['appts','📅','Appts'],['me','💗','Me Time']];
+function render(){
+  if(tab==='notes')tab='today';
+  const act=document.activeElement&&document.activeElement.id;const vals={};
+  document.querySelectorAll('#app input,#app textarea').forEach(e=>{if(e.id&&e.value&&e.type!=='date'&&e.type!=='time')vals[e.id]=e.value});
+  /* keep the task day/time/repeat the user picked (and the panel open) so a re-render can't flip a PM time back */
+  const draft={},ndet=document.getElementById('ndet'),detOpen=!!(ndet&&ndet.open);
+  ['ntd','ntt','ntr'].forEach(id=>{const e=document.getElementById(id);if(e&&(id==='ntr'?e.value:e.value!==e.defaultValue))draft[id]=e.value});
+  document.body.dataset.size=S.settings.size;document.body.classList.toggle('dark',!!S.settings.dark);
+  $('#hi').innerHTML=greeting();
+  $('#dt').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  $('#app').innerHTML=({today:vToday,lists:vLists,appts:vAppts,me:vMeTime})[tab]()+`<div class="sync">${syncMsg}</div>`;
+  Object.keys(vals).forEach(k=>{const e=document.getElementById(k);if(e)e.value=vals[k]});
+  Object.keys(draft).forEach(k=>{const e=document.getElementById(k);if(e)e.value=draft[k]});
+  if(detOpen){const d=document.getElementById('ndet');if(d)d.open=true}
+  document.body.classList.toggle('noglass',S.settings.glass===false||autoNoGlass);
+  const appEl=$('#app');appEl.classList.remove('enter');
+  if(animTab){animTab=false}
+  if(lastAdd){const b=document.querySelector('[data-pop="'+lastAdd+'"]'),r=b&&b.closest('.row');if(r)r.classList.add('slidein');lastAdd=null}
+  if(act){const e=document.getElementById(act);if(e&&e.focus&&e.id.indexOf('mic-')!==0){e.focus();if(e.type==='text'&&e.setSelectionRange){try{e.setSelectionRange(e.value.length,e.value.length)}catch(x){}}}}
+  $('#tabs').innerHTML=TABS.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="tab='${t[0]}';animTab=true;window.scrollTo(0,0);render()"><span>${t[1]}</span>${t[2]}</button>`).join('')}
+
+
+/* ---------- gestures: swipe rows, drag sheets, collapsing header ---------- */
+(function(){
+  const app=document.getElementById('app');let sw=null;
+  app.addEventListener('touchstart',e=>{const row=e.target.closest('.row[data-sw]');
+    if(!row||e.touches.length>1||e.target.closest('input,textarea,select')){sw=null;return}
+    const t=e.touches[0];sw={row,x:t.clientX,y:t.clientY,dx:0,lock:null,spec:row.dataset.sw.split(':')}},{passive:true});
+  app.addEventListener('touchmove',e=>{if(!sw)return;const t=e.touches[0],dx=t.clientX-sw.x,dy=t.clientY-sw.y;
+    if(!sw.lock&&(Math.abs(dx)>10||Math.abs(dy)>10))sw.lock=Math.abs(dx)>Math.abs(dy)*1.5?'h':'v';
+    if(sw.lock!=='h'){if(sw.lock==='v')sw=null;return}
+    if(e.cancelable)e.preventDefault();
+    let d=dx;if(d<0&&sw.spec[0]==='r')d=0;
+    sw.dx=d;const r=sw.row;r.style.transition='none';r.style.transform='translateX('+(d*.85)+'px)';
+    r.classList.toggle('swr',d>12);r.classList.toggle('swl',d<-12)},{passive:false});
+  const end=()=>{if(!sw)return;const{row,dx,spec}=sw;sw=null;
+    row.style.transition='transform .32s cubic-bezier(.34,1.56,.64,1),opacity .2s';
+    if(Math.abs(dx)<96){row.style.transform='';row.classList.remove('swr','swl');return}
+    try{if(navigator.vibrate)navigator.vibrate(12)}catch(e){}
+    const kind=spec[0],id=spec[1],ds=spec[2];
+    if(dx>0){row.style.transform='';row.classList.remove('swr','swl');
+      if(kind==='t')toggleTask(id,ds);else if(kind==='i')toggleItem(id);else if(kind==='r')rtTick(id)}
+    else{row.style.transform='translateX(-110%)';row.style.opacity='0';
+      setTimeout(()=>{if(kind==='t')delTask(id);else if(kind==='i')delItem(id)},190)}};
+  app.addEventListener('touchend',end);app.addEventListener('touchcancel',end);
+  const m=document.getElementById('modal');let d=null;
+  m.addEventListener('touchstart',e=>{const t=e.touches[0],r=m.getBoundingClientRect();if(t.clientY-r.top>48||m.scrollTop>0){d=null;return}d={y:t.clientY,dy:0}},{passive:true});
+  m.addEventListener('touchmove',e=>{if(!d)return;const dy=e.touches[0].clientY-d.y;if(dy<0){d=null;return}d.dy=dy;m.style.animation='none';m.style.transition='none';m.style.transform='translateY('+dy+'px)';if(e.cancelable)e.preventDefault()},{passive:false});
+  m.addEventListener('touchend',()=>{if(!d)return;const dy=d.dy;d=null;
+    if(dy>110){m.style.transition='transform .22s ease-in';m.style.transform='translateY(100%)';clearTimeout(modalT);modalT=setTimeout(hideModal,210)}
+    else{m.style.transition='transform .35s cubic-bezier(.34,1.56,.64,1)';m.style.transform='';setTimeout(()=>{m.style.transition='';m.style.animation=''},360)}});
+  const hd=document.querySelector('header');
+  addEventListener('scroll',()=>{const on=hd.classList.contains('scrolled');if(!on&&scrollY>40)hd.classList.add('scrolled');else if(on&&scrollY<12)hd.classList.remove('scrolled')},{passive:true});
+})();
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#modalwrap').hidden)closeModal()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();tick()}});
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e});
+let lastDay=todayStr();setInterval(()=>{tick();if(todayStr()!==lastDay){lastDay=todayStr();render()}},15000);
+render();tick();
+if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});

@@ -33,7 +33,7 @@ function priorities(){
 function tomorrow(){const d=addDays(day(),1),tasks=S.tasks.filter(t=>occursOn(t,d)&&!isDone(t,d)).slice(0,3),appts=S.appts.filter(a=>a.date===d).slice(0,3);return `<section class="card md11-rise"><h2>🌙 Tomorrow preview</h2>${tasks.map(t=>`<p class="meta">✓ ${safe(t.t)}</p>`).join('')}${appts.map(a=>`<p class="meta">📅 ${safe(a.title||a.t||'Appointment')}</p>`).join('')}${!tasks.length&&!appts.length?'<p class="meta">Nothing planned yet.</p>':''}</section>`}
 function shopping(){const l=S.lists.find(l=>l.id==='groc'),n=l?l.items.filter(i=>!i.done).length:0;return `<section class="card md11-rise"><h2>🛒 Shopping</h2><p class="meta">${n} item${n===1?'':'s'} remaining</p>${btn('Open shopping list','shopping')}</section>`}
 function backupCard(){const last=S.settings.v11BackupDismissed,elapsed=last?(Date.now()-Date.parse(last+'T00:00:00'))/86400000:999;return elapsed>=7?`<section class="card md11-rise"><h2>💾 Backup reminder</h2><p class="meta">Your data is stored on this phone. Export a backup to protect it.</p><div class="acts">${btn('Export backup','backup')}${btn('Remind next week','snooze')}</div></section>`:''}
-function renderExtras(){return noteCard()+priorities()+backupCard()}
+function renderExtras(){return noteCard()}
 const originalToday=vToday;
 vToday=function(){
  const base=originalToday();

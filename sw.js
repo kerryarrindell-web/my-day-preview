@@ -1,4 +1,4 @@
-const CACHE = 'myday-blossom-glow-reference-opening-20261125';
+const CACHE = 'myday-blossom-glow-reference-opening-repaired-20261125';
 const FILES = ['./', 'index.html', 'my-day-v11.js', 'my-day-v11.css', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'favicon.svg'];
 
 self.addEventListener('install', e => {

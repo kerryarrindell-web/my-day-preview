@@ -5,3 +5,5 @@ PREVIEW ONLY. Upload extracted files to my-day-preview repository, NOT live app.
 Final addition: 1.45-second Blossom Glow opening animation with Skip and reduced-motion support. No changes to saved data keys.
 
 Reference opening animation: bundled myday-opening.mp4 (trimmed before original black fade), autoplay muted/playsinline, Skip and reduced-motion support.
+
+REPAIR: removed priorities and backup reminder from Today; kept one Home Sticky Notes section. Updated service-worker cache key.
